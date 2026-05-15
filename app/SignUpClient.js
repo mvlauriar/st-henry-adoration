@@ -1,19 +1,18 @@
 'use client';
-
+ 
 import { useState, useEffect } from 'react';
 import {
   formatDateLabel,
+  formatDateLabelEs,
   formatHourRange,
-  slotIsPast,
   todayInParish,
 } from '../lib/dates';
-
-export default function SignUpClient({ dates, hours, slotsPerHour, initialCounts }) {
+ 
+export default function SignUpClient({ slots, slotsPerHour, initialCounts }) {
   const [counts, setCounts] = useState(initialCounts);
-  const [openSlot, setOpenSlot] = useState(null); // { date, hour }
+  const [openSlot, setOpenSlot] = useState(null);
   const today = todayInParish();
-
-  // Refresh counts after a successful signup so dots update without a full reload
+ 
   async function refreshCounts() {
     try {
       const res = await fetch('/api/signup', { method: 'GET', cache: 'no-store' });
@@ -21,35 +20,30 @@ export default function SignUpClient({ dates, hours, slotsPerHour, initialCounts
         const data = await res.json();
         setCounts(data.counts || {});
       }
-    } catch (e) {
-      // ignore — page will refresh on next visit
-    }
+    } catch (e) {}
   }
-
+ 
   return (
     <>
-      {dates.map((date) => (
+      {slots.map(({ date, hours }) => (
         <div key={date} className="day">
           <div className="day-header">
-            <span>{formatDateLabel(date)}</span>
-            {date === today && <span className="today">Today</span>}
+            <span>
+              {formatDateLabel(date)}
+              <span className="day-header-es">{formatDateLabelEs(date)}</span>
+            </span>
+            {date === today && <span className="today">Today · Hoy</span>}
           </div>
           {hours.map((hour) => {
             const filled = counts?.[date]?.[hour] || 0;
-            const isPast = slotIsPast(date, hour);
             const isFull = filled >= slotsPerHour;
-            const disabled = isPast || isFull;
-            const className = [
-              'hour-row',
-              isFull ? 'full' : '',
-              isPast ? 'past' : '',
-            ].filter(Boolean).join(' ');
-
+            const className = ['hour-row', isFull ? 'full' : ''].filter(Boolean).join(' ');
+ 
             return (
               <button
                 key={hour}
                 className={className}
-                disabled={disabled}
+                disabled={isFull}
                 onClick={() => setOpenSlot({ date, hour })}
               >
                 <span className="time">{formatHourRange(hour)}</span>
@@ -60,11 +54,7 @@ export default function SignUpClient({ dates, hours, slotsPerHour, initialCounts
                     ))}
                   </span>
                   <span>
-                    {isPast
-                      ? 'past'
-                      : isFull
-                      ? 'Full'
-                      : `${filled} of ${slotsPerHour}`}
+                    {isFull ? 'Full · Lleno' : `${filled} of ${slotsPerHour}`}
                   </span>
                 </span>
               </button>
@@ -72,20 +62,18 @@ export default function SignUpClient({ dates, hours, slotsPerHour, initialCounts
           })}
         </div>
       ))}
-
+ 
       {openSlot && (
         <SignUpModal
           slot={openSlot}
           onClose={() => setOpenSlot(null)}
-          onSuccess={() => {
-            refreshCounts();
-          }}
+          onSuccess={() => { refreshCounts(); }}
         />
       )}
     </>
   );
 }
-
+ 
 function SignUpModal({ slot, onClose, onSuccess }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -94,17 +82,28 @@ function SignUpModal({ slot, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
-
-  // Lock body scroll while modal is open
+ 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
-
+ 
+  function isValidPhone(p) {
+    const digits = p.replace(/\D/g, '');
+    return digits.length >= 10;
+  }
+ 
   async function submit(e) {
     e.preventDefault();
     setError('');
-    if (!name.trim()) { setError('Please enter your name.'); return; }
+    if (!name.trim()) {
+      setError('Please enter your name. · Por favor escriba su nombre.');
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      setError('Please enter a valid phone number. · Por favor escriba un número de teléfono válido.');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/signup', {
@@ -121,41 +120,46 @@ function SignUpModal({ slot, onClose, onSuccess }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Something went wrong. Please try again.');
+        setError(data.error || 'Something went wrong. Please try again. · Algo salió mal. Intente de nuevo.');
         setSubmitting(false);
         return;
       }
       setDone(true);
       onSuccess?.();
     } catch (err) {
-      setError('Could not connect. Please try again.');
+      setError('Could not connect. · No se pudo conectar.');
       setSubmitting(false);
     }
   }
-
+ 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         {done ? (
           <div className="success">
             <div className="seal">✦</div>
-            <h3>Thank you</h3>
-            <p>You are signed up for</p>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, color: 'var(--burgundy)', margin: '8px 0 16px' }}>
+            <h3>Thank you · Gracias</h3>
+            <p>You are signed up for · Inscrito para</p>
+            <p className="success-when">
               {formatDateLabel(slot.date)} · {formatHourRange(slot.hour)}
             </p>
-            {email && <p>A reminder will be sent one hour before your time.</p>}
+            {email && (
+              <p>
+                A reminder will be sent one hour before your time.<br/>
+                <span className="success-es">Recibirá un recordatorio una hora antes.</span>
+              </p>
+            )}
             <div className="btn-row">
-              <button className="btn btn-primary" onClick={onClose}>Close</button>
+              <button className="btn btn-primary" onClick={onClose}>Close · Cerrar</button>
             </div>
           </div>
         ) : (
           <form onSubmit={submit}>
             <h3>{formatDateLabel(slot.date)}</h3>
             <p className="modal-sub">{formatHourRange(slot.hour)}</p>
-
+ 
             <div className="field">
-              <label htmlFor="name">Your name</label>
+              <label htmlFor="name">Your name · Su nombre</label>
               <input
                 id="name"
                 type="text"
@@ -166,31 +170,33 @@ function SignUpModal({ slot, onClose, onSuccess }) {
                 required
               />
             </div>
-
+ 
             <div className="field">
-              <label htmlFor="phone">Phone number</label>
+              <label htmlFor="phone">
+                Phone number · Número de teléfono <span className="req">(required · requerido)</span>
+              </label>
               <input
                 id="phone"
                 type="tel"
                 autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="(optional)"
+                required
               />
             </div>
-
+ 
             <div className="field">
-              <label htmlFor="email">Email (for reminder)</label>
+              <label htmlFor="email">Email <span className="opt">(optional · opcional)</span></label>
               <input
                 id="email"
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="(optional, for 1-hour reminder)"
+                placeholder="for 1-hour reminder · para recordatorio"
               />
             </div>
-
+ 
             <label className="checkbox-row">
               <input
                 type="checkbox"
@@ -199,18 +205,19 @@ function SignUpModal({ slot, onClose, onSuccess }) {
               />
               <span>
                 <span className="label-main">Sign me up at this time for the next 4 weeks</span>
-                <span className="label-sub">You can cancel any individual week by contacting the parish office.</span>
+                <span className="label-main label-es">Inscríbame a esta hora durante las próximas 4 semanas</span>
+                <span className="label-sub">Cancel any week by contacting the parish office. · Cancele cualquier semana llamando a la parroquia.</span>
               </span>
             </label>
-
+ 
             {error && <div className="error-text">{error}</div>}
-
+ 
             <div className="btn-row">
               <button type="button" className="btn" onClick={onClose} disabled={submitting}>
-                Cancel
+                Cancel · Cancelar
               </button>
               <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Signing up…' : 'Sign Up'}
+                {submitting ? 'Signing up… · Inscribiendo…' : 'Sign Up · Inscribirse'}
               </button>
             </div>
           </form>
@@ -219,3 +226,4 @@ function SignUpModal({ slot, onClose, onSuccess }) {
     </div>
   );
 }
+ 
