@@ -521,3 +521,79 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .footer span { font-size: 14px; }
  
+/* Section headings on admin dashboard */
+.admin-h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  font-size: 26px;
+  margin: 24px 0 12px;
+  color: var(--ink-strong);
+}
+ 
+/* Live "right now" panel */
+.live-panel {
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 20px 22px;
+  margin: 16px 0 28px;
+}
+.live-panel.ok {
+  background: var(--green-bg);
+  border-color: #6da077;
+  color: var(--green);
+}
+.live-panel.warn {
+  background: var(--amber-bg);
+  border-color: #d4a945;
+  color: #5e3e0a;
+}
+.live-label {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.live-message {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.live-names { display: flex; flex-wrap: wrap; gap: 8px; }
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.live-pill.in { background: #fff; color: var(--green); }
+.live-pill.pending { background: rgba(255, 255, 255, 0.5); color: var(--ink-strong); }
+ 
+/* No-show row indicators */
+.admin-list-row.no-show-row { background: var(--red-bg); }
+.no-show-note {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 3px;
+  font-style: italic;
+}
+.paused-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  background: var(--amber-bg);
+  color: #6e4a0e;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-style: normal;
+}
