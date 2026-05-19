@@ -23,7 +23,6 @@ export default function AdminPage() {
       const d = await res.json();
       setData(d);
       setAuthed(true);
-      // Persist for the session so refresh isn't a hassle
       sessionStorage.setItem('adminPw', pw);
     } catch {
       setError('Network error.');
@@ -31,7 +30,6 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  // Auto-login if we already have a password in this session
   useEffect(() => {
     const saved = sessionStorage.getItem('adminPw');
     if (saved) { setPassword(saved); load(saved); }
@@ -44,6 +42,17 @@ export default function AdminPage() {
       method: 'DELETE',
       headers: { 'x-admin-password': pw, 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
+    });
+    load(pw);
+  }
+
+  async function resumeRecurring(signupId) {
+    if (!confirm('Resume this volunteer\'s recurring slots?')) return;
+    const pw = sessionStorage.getItem('adminPw');
+    await fetch('/api/admin', {
+      method: 'PATCH',
+      headers: { 'x-admin-password': pw, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coordinatorId: signupId, action: 'resumeRecurring' }),
     });
     load(pw);
   }
@@ -73,7 +82,7 @@ export default function AdminPage() {
 
   if (!data) return <div className="page">Loading…</div>;
 
-  // Group signups by date + hour for the list
+  // Group signups by date+hour for the list
   const byDateHour = {};
   for (const s of data.signups) {
     const key = `${s.slot_date}__${s.slot_hour}`;
@@ -81,13 +90,11 @@ export default function AdminPage() {
     byDateHour[key].push(s);
   }
 
-  // Build a flat ordered list: every (date, hour) — empty hours included as flags
   const rows = [];
   for (const d of data.dates) {
     for (const h of data.hours) {
       const key = `${d}__${h}`;
-      const list = byDateHour[key] || [];
-      rows.push({ date: d, hour: h, list });
+      rows.push({ date: d, hour: h, list: byDateHour[key] || [] });
     }
   }
 
@@ -99,10 +106,11 @@ export default function AdminPage() {
         <div className="parish">{data.empty.length} empty hour{data.empty.length === 1 ? '' : 's'} this week</div>
       </header>
 
-      {/* Heatmap grid */}
-      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500, fontSize: 24, margin: '8px 0' }}>
-        Coverage at a glance
-      </h2>
+      {/* Live current-hour panel */}
+      {data.currentHourLive && <CurrentHourPanel live={data.currentHourLive} />}
+
+      {/* Coverage grid */}
+      <h2 className="admin-h2">Coverage at a glance</h2>
       <div className="admin-grid" style={{ gridTemplateColumns: `110px repeat(${data.hours.length}, 1fr)` }}>
         <div className="admin-cell header"></div>
         {data.hours.map((h) => (
@@ -112,17 +120,14 @@ export default function AdminPage() {
           <FragmentRow key={d} date={d} hours={data.hours} grid={data.grid} slotsPerHour={data.slotsPerHour} />
         ))}
       </div>
-
-      <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 24px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--ink-secondary)', margin: '0 0 24px', flexWrap: 'wrap' }}>
         <Legend color="var(--red-bg)" textColor="var(--red)" label="Empty" />
-        <Legend color="var(--amber-bg)" textColor="var(--gold)" label="Partial" />
+        <Legend color="var(--amber-bg)" textColor="#6e4a0e" label="Partial" />
         <Legend color="var(--green-bg)" textColor="var(--green)" label="Full" />
       </div>
 
-      {/* Detailed list */}
-      <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 500, fontSize: 24, margin: '24px 0 8px' }}>
-        Upcoming signups
-      </h2>
+      {/* Signups list */}
+      <h2 className="admin-h2">Upcoming signups</h2>
       <div className="admin-list">
         {rows.map(({ date, hour, list }) => {
           if (list.length === 0) {
@@ -134,28 +139,169 @@ export default function AdminPage() {
             );
           }
           return list.map((s, i) => (
-            <div key={s.id} className="admin-list-row">
+            <div key={s.id} className={`admin-list-row ${s.no_show ? 'no-show-row' : ''}`}>
               <div className="when">
                 {i === 0 ? `${formatDateLabel(date)} · ${formatHourRange(hour)}` : ''}
               </div>
-              <div>{s.name}{s.recurring && ' ↻'}</div>
-              <div style={{ color: 'var(--ink-soft)', fontSize: 14 }}>
-                {s.phone || ''}{s.phone && s.email ? ' · ' : ''}{s.email || ''}
+              <div>
+                <div>
+                  {s.name}
+                  {s.recurring && ' ↻'}
+                  {s.walk_in && ' (walk-in)'}
+                  {s.recurring_paused && <span className="paused-tag"> paused</span>}
+                </div>
+                {s.noShowHistory && s.noShowHistory.count > 0 && (
+                  <div className="no-show-note">
+                    ⚠ {s.noShowHistory.count} prior no-show{s.noShowHistory.count > 1 ? 's' : ''} ({s.noShowHistory.attended} attended)
+                  </div>
+                )}
               </div>
-              <button className="delete-btn" onClick={() => handleDelete(s.id)}>Remove</button>
+              <div style={{ color: 'var(--ink-secondary)', fontSize: 14 }}>
+                {s.phone || ''}{s.phone && s.email ? ' · ' : ''}{s.email || ''}
+                {s.checkedInAtFormatted && (
+                  <div style={{ color: 'var(--green)', fontSize: 13, fontWeight: 600, marginTop: 2 }}>
+                    ✓ Checked in {s.checkedInAtFormatted}
+                  </div>
+                )}
+                {s.no_show && (
+                  <div style={{ color: 'var(--red)', fontSize: 13, fontWeight: 600, marginTop: 2 }}>
+                    ⚠ NO-SHOW
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {s.recurring_paused && (
+                  <button className="delete-btn" onClick={() => resumeRecurring(s.id)} style={{ borderColor: 'var(--green)', color: 'var(--green)' }}>
+                    Resume
+                  </button>
+                )}
+                <button className="delete-btn" onClick={() => handleDelete(s.id)}>Remove</button>
+              </div>
             </div>
           ));
         })}
       </div>
 
+      {/* Coordinators */}
+      <h2 className="admin-h2" style={{ marginTop: 36 }}>Alert recipients</h2>
+      <p style={{ color: 'var(--ink-secondary)', fontSize: 15, margin: '0 0 12px' }}>
+        These people receive an alert if no one has checked in 5 minutes into an hour. Phone for text (when Twilio is set up), email used now as fallback.
+      </p>
+      <CoordinatorList coordinators={data.coordinators} reload={() => load(sessionStorage.getItem('adminPw'))} />
+
       <button
         className="btn"
-        style={{ marginTop: 24, maxWidth: 200 }}
+        style={{ marginTop: 32, maxWidth: 200 }}
         onClick={() => { sessionStorage.removeItem('adminPw'); setAuthed(false); setData(null); setPassword(''); }}
       >
         Sign out
       </button>
     </div>
+  );
+}
+
+function CurrentHourPanel({ live }) {
+  const allCheckedIn = live.checkedInCount > 0;
+  const className = allCheckedIn ? 'live-panel ok' : 'live-panel warn';
+  return (
+    <div className={className}>
+      <div className="live-label">RIGHT NOW · {formatHourRange(live.hour)}</div>
+      {live.scheduled.length === 0 ? (
+        <div className="live-message">⚠ No one scheduled for this hour</div>
+      ) : allCheckedIn ? (
+        <div className="live-message">
+          ✓ {live.checkedInCount} of {live.scheduled.length} checked in
+        </div>
+      ) : (
+        <div className="live-message">
+          ⏳ Waiting for {live.scheduled.length} volunteer{live.scheduled.length > 1 ? 's' : ''} to arrive
+        </div>
+      )}
+      <div className="live-names">
+        {live.scheduled.map((s) => (
+          <span key={s.id} className={`live-pill ${s.checked_in_at ? 'in' : 'pending'}`}>
+            {s.checked_in_at ? '✓' : '⌛'} {s.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CoordinatorList({ coordinators, reload }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
+  async function add(e) {
+    e.preventDefault();
+    const pw = sessionStorage.getItem('adminPw');
+    await fetch('/api/admin', {
+      method: 'PUT',
+      headers: { 'x-admin-password': pw, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, email }),
+    });
+    setName(''); setPhone(''); setEmail(''); setAdding(false);
+    reload();
+  }
+
+  async function patch(coordinatorId, action) {
+    const pw = sessionStorage.getItem('adminPw');
+    await fetch('/api/admin', {
+      method: 'PATCH',
+      headers: { 'x-admin-password': pw, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coordinatorId, action }),
+    });
+    reload();
+  }
+
+  return (
+    <>
+      <div className="admin-list">
+        {coordinators.length === 0 && (
+          <div className="admin-list-row" style={{ gridTemplateColumns: '1fr' }}>
+            <em style={{ color: 'var(--ink-secondary)' }}>No coordinators yet. Add one below.</em>
+          </div>
+        )}
+        {coordinators.map((c) => (
+          <div key={c.id} className="admin-list-row" style={{ gridTemplateColumns: '1fr 1fr 1fr auto' }}>
+            <div>{c.name}{!c.active && <em style={{ color: 'var(--ink-secondary)' }}> (paused)</em>}</div>
+            <div style={{ color: 'var(--ink-secondary)' }}>{c.phone || '—'}</div>
+            <div style={{ color: 'var(--ink-secondary)' }}>{c.email || '—'}</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="delete-btn" onClick={() => patch(c.id, 'toggle')}>{c.active ? 'Pause' : 'Resume'}</button>
+              <button className="delete-btn" onClick={() => { if (confirm('Remove?')) patch(c.id, 'remove'); }}>Remove</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {adding ? (
+        <form onSubmit={add} style={{ marginTop: 16, background: 'var(--bg-card)', padding: 16, borderRadius: 4, border: '1px solid var(--rule)' }}>
+          <div className="field">
+            <label>Name</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label>Phone (for SMS once enabled)</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+15551234567" />
+          </div>
+          <div className="field">
+            <label>Email (for now)</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="btn-row">
+            <button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Add</button>
+          </div>
+        </form>
+      ) : (
+        <button className="btn btn-primary" style={{ marginTop: 12, maxWidth: 240 }} onClick={() => setAdding(true)}>
+          + Add coordinator
+        </button>
+      )}
+    </>
   );
 }
 
