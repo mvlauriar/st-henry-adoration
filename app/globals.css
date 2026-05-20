@@ -15,10 +15,10 @@
   --red-bg: #f7e6e6;
   --shadow: 0 1px 2px rgba(31, 26, 18, 0.08), 0 8px 24px rgba(31, 26, 18, 0.07);
 
-  /* Font stacks */
+  /* Font stacks — Lora is now used for both prose and numbers for full cohesion */
   --font-display: 'EB Garamond', Georgia, 'Times New Roman', serif;
   --font-prose: 'Lora', Georgia, serif;
-  --font-numeric: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-numeric: 'Lora', Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -38,12 +38,6 @@ html, body {
 button { font-family: inherit; }
 input, textarea, select { font-family: inherit; font-size: 20px; }
 
-/* Numeric/time content gets IBM Plex Sans automatically */
-.num, time, .time-text {
-  font-family: var(--font-numeric);
-  font-feature-settings: "tnum" 1, "lnum" 1; /* tabular lining figures */
-}
-
 /* ============ Page shell ============ */
 .page {
   max-width: 640px;
@@ -62,7 +56,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .masthead h1 {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 500;
   font-size: clamp(34px, 8vw, 46px);
   line-height: 1.1;
   margin: 0;
@@ -88,7 +82,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .hero-call .hero-en {
   font-family: var(--font-prose);
   font-style: italic;
-  font-weight: 600;
+  font-weight: 500;
   font-size: clamp(24px, 6vw, 30px);
   line-height: 1.2;
   color: var(--burgundy);
@@ -97,7 +91,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .hero-call .hero-es {
   font-family: var(--font-prose);
   font-style: italic;
-  font-weight: 500;
+  font-weight: 400;
   font-size: clamp(20px, 5vw, 25px);
   line-height: 1.25;
   color: var(--ink-strong);
@@ -115,7 +109,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .guidelines h2 {
   font-family: var(--font-prose);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 22px;
   margin: 0 0 16px;
   color: var(--burgundy);
@@ -124,7 +118,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .guidelines h2 .lang-es {
   display: block;
-  font-weight: 500;
+  font-weight: 400;
   font-style: italic;
   font-size: 18px;
   color: var(--ink-strong);
@@ -173,7 +167,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .day-header {
   font-family: var(--font-prose);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ink-strong);
   display: flex;
   align-items: baseline;
@@ -186,7 +180,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .day-header .date-text {
   font-family: var(--font-numeric);
-  font-weight: 600;
+  font-weight: 500;
 }
 .day-header .day-header-es {
   display: inline-block;
@@ -197,13 +191,13 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   font-weight: 400;
 }
 .day-header .today {
-  font-family: var(--font-numeric);
-  font-style: normal;
-  font-size: 13px;
+  font-family: var(--font-prose);
+  font-style: italic;
+  font-size: 14px;
   color: var(--burgundy);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /* ============ Hour rows ============ */
@@ -234,15 +228,14 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .hour-row .time {
   font-family: var(--font-numeric);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ink-strong);
-  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 .hour-row .status {
   display: flex; align-items: center; gap: 12px;
   font-size: 16px;
   color: var(--ink);
-  font-weight: 500;
+  font-weight: 400;
   font-family: var(--font-numeric);
 }
 .dots { display: flex; gap: 6px; }
@@ -253,7 +246,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .dot.filled { background: var(--gold); border-color: var(--gold); }
 .hour-row.full { background: var(--green-bg); border-color: #8fb09a; }
-.hour-row.full .status { color: var(--green); font-weight: 600; }
+.hour-row.full .status { color: var(--green); font-weight: 500; }
 .hour-row.full .time { color: var(--green); }
 
 .no-slots {
@@ -291,7 +284,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .modal h3 {
   font-family: var(--font-prose);
-  font-size: 26px; font-weight: 700;
+  font-size: 26px; font-weight: 500;
   margin: 0 0 4px;
   color: var(--ink-strong);
 }
@@ -301,26 +294,26 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   color: var(--ink-secondary);
   margin: 0 0 22px;
   font-size: 19px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .field { margin-bottom: 18px; }
 .field label {
   display: block;
-  font-family: var(--font-numeric);
+  font-family: var(--font-prose);
   font-size: 14px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink-strong);
   margin-bottom: 8px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .field label .req {
   color: var(--burgundy);
   font-style: italic;
   text-transform: none;
   letter-spacing: 0;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 13px;
   margin-left: 6px;
   font-family: var(--font-prose);
@@ -361,7 +354,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   cursor: pointer;
 }
 .checkbox-row input { margin-top: 4px; flex-shrink: 0; width: 22px; height: 22px; accent-color: var(--burgundy); }
-.checkbox-row .label-main { display: block; font-weight: 600; color: var(--ink-strong); line-height: 1.4; }
+.checkbox-row .label-main { display: block; font-weight: 500; color: var(--ink-strong); line-height: 1.4; }
 .checkbox-row .label-main.label-es {
   font-weight: 400; font-style: italic;
   color: var(--ink-secondary);
@@ -378,7 +371,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   padding: 18px;
   border-radius: 4px;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 500;
   border: 1.5px solid var(--ink-strong);
   background: var(--bg-card);
   color: var(--ink-strong);
@@ -406,7 +399,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .success-when {
   font-family: var(--font-numeric);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--burgundy);
   margin: 10px 0 18px !important;
 }
@@ -415,7 +408,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 /* ============ Admin ============ */
 .admin-h2 {
   font-family: var(--font-prose);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 22px;
   margin: 24px 0 12px;
   color: var(--ink-strong);
@@ -444,12 +437,12 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   font-size: 15px;
   text-align: left;
   padding-left: 10px;
-  font-weight: 600;
+  font-weight: 500;
 }
-.admin-cell.empty { background: var(--red-bg); color: var(--red); font-weight: 700; }
-.admin-cell.partial { background: var(--amber-bg); color: #6e4a0e; font-weight: 600; }
-.admin-cell.full { background: var(--green-bg); color: var(--green); font-weight: 600; }
-.admin-cell.header { background: var(--bg); font-family: var(--font-numeric); font-size: 13px; padding: 6px 4px; font-weight: 700; letter-spacing: 0.02em; }
+.admin-cell.empty { background: var(--red-bg); color: var(--red); font-weight: 500; }
+.admin-cell.partial { background: var(--amber-bg); color: #6e4a0e; font-weight: 500; }
+.admin-cell.full { background: var(--green-bg); color: var(--green); font-weight: 500; }
+.admin-cell.header { background: var(--bg); font-family: var(--font-numeric); font-size: 13px; padding: 6px 4px; font-weight: 500; letter-spacing: 0.02em; }
 
 .admin-list {
   background: var(--bg-card);
@@ -469,12 +462,12 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   color: var(--ink-strong);
 }
 .admin-list-row:last-child { border-bottom: 0; }
-.admin-list-row.empty-flag { background: var(--red-bg); color: var(--red); font-style: italic; font-weight: 600; }
+.admin-list-row.empty-flag { background: var(--red-bg); color: var(--red); font-style: italic; font-weight: 500; }
 .admin-list-row.no-show-row { background: var(--red-bg); }
 .admin-list-row .when {
   font-family: var(--font-numeric);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .admin-list-row .delete-btn {
   background: transparent;
@@ -484,7 +477,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   padding: 6px 12px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   font-family: var(--font-prose);
 }
 .admin-list-row .delete-btn:hover { color: var(--red); border-color: var(--red); }
@@ -496,7 +489,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .checkin-green {
   color: var(--green);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   font-family: var(--font-numeric);
 }
 .checkout-grey {
@@ -511,7 +504,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-family: var(--font-numeric);
@@ -524,7 +517,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   display: flex; flex-wrap: wrap; gap: 10px;
   font-size: 13px; margin-top: 3px;
   font-style: italic;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.4;
 }
 .history-note .hist-no-show { color: var(--red); }
@@ -539,7 +532,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   color: #6e4a0e;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-style: normal;
@@ -556,17 +549,17 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .live-panel.ok { background: var(--green-bg); border-color: #6da077; color: var(--green); }
 .live-panel.warn { background: var(--amber-bg); border-color: #d4a945; color: #5e3e0a; }
 .live-label {
-  font-family: var(--font-numeric);
+  font-family: var(--font-prose);
   font-size: 12px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 6px;
 }
 .live-message {
   font-family: var(--font-prose);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 14px;
 }
 .live-volunteers { display: flex; flex-direction: column; gap: 8px; }
@@ -579,10 +572,10 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   font-size: 14px;
 }
 .live-volunteer.in { background: #fff; }
-.live-volunteer .lv-status { font-weight: 700; font-family: var(--font-numeric); }
+.live-volunteer .lv-status { font-weight: 500; font-family: var(--font-numeric); }
 .live-volunteer.in .lv-status { color: var(--green); }
 .live-volunteer.pending .lv-status { color: var(--ink-strong); }
-.live-volunteer .lv-name { font-weight: 600; color: var(--ink-strong); }
+.live-volunteer .lv-name { font-weight: 500; color: var(--ink-strong); }
 .live-volunteer .lv-phone {
   color: var(--ink-secondary);
   font-family: var(--font-numeric);
@@ -618,6 +611,6 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .footer span { font-size: 14px; }
 
-.error-text { color: var(--red); font-size: 16px; margin-top: 10px; font-weight: 500; }
+.error-text { color: var(--red); font-size: 16px; margin-top: 10px; font-weight: 400; }
 
 .lang-es { display: block; font-style: italic; color: var(--ink-secondary); font-size: 17px; margin-top: 2px; font-weight: 400; }
