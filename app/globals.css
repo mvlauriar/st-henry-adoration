@@ -1,56 +1,67 @@
 :root {
   --bg: #faf6ee;
   --bg-card: #ffffff;
-  --ink: #1f1a12;            /* primary text — darker than before for max contrast */
-  --ink-strong: #14110b;     /* for the most important text (hour labels, day headers) */
-  --ink-secondary: #3a3225;  /* secondary text — was the old "soft", now much darker */
-  --rule: #c9bda1;           /* dividers — slightly stronger than before */
-  --gold: #8a6418;           /* DECORATIVE ONLY — ornaments, dots, brand flourishes */
-  --gold-soft: #b8943e;      /* DECORATIVE ONLY — quote rule */
-  --burgundy: #5a1818;       /* darker burgundy for stronger contrast */
+  --ink: #1f1a12;
+  --ink-strong: #14110b;
+  --ink-secondary: #3a3225;
+  --rule: #c9bda1;
+  --gold: #8a6418;
+  --gold-soft: #b8943e;
+  --burgundy: #5a1818;
   --green: #234d2e;
   --red: #8e2222;
   --green-bg: #ecf3ec;
   --amber-bg: #faf2dc;
   --red-bg: #f7e6e6;
   --shadow: 0 1px 2px rgba(31, 26, 18, 0.08), 0 8px 24px rgba(31, 26, 18, 0.07);
+
+  /* Font stacks */
+  --font-display: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --font-prose: 'Lora', Georgia, serif;
+  --font-numeric: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
 }
- 
+
 * { box-sizing: border-box; }
- 
+
 html, body {
   margin: 0;
   padding: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Lora', Georgia, serif;
+  font-family: var(--font-prose);
   font-size: 19px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
- 
+
 button { font-family: inherit; }
 input, textarea, select { font-family: inherit; font-size: 20px; }
- 
+
+/* Numeric/time content gets IBM Plex Sans automatically */
+.num, time, .time-text {
+  font-family: var(--font-numeric);
+  font-feature-settings: "tnum" 1, "lnum" 1; /* tabular lining figures */
+}
+
 /* ============ Page shell ============ */
 .page {
   max-width: 640px;
   margin: 0 auto;
   padding: 28px 20px 80px;
 }
- 
+
 /* ============ Header ============ */
 .masthead { text-align: center; padding: 12px 0 20px; }
 .masthead .ornament {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   color: var(--gold);
   font-size: 26px;
   letter-spacing: 0.4em;
   margin-bottom: 8px;
 }
 .masthead h1 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: clamp(34px, 8vw, 46px);
   line-height: 1.1;
@@ -59,7 +70,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   color: var(--ink-strong);
 }
 .masthead .parish {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-prose);
   font-style: italic;
   color: var(--ink-secondary);
   margin-top: 6px;
@@ -71,14 +82,11 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   margin: 22px auto 0;
   max-width: 220px;
 }
- 
+
 /* ============ Hero call to prayer ============ */
-.hero-call {
-  margin: 24px auto 0;
-  padding: 18px 8px 4px;
-}
+.hero-call { margin: 24px auto 0; padding: 18px 8px 4px; }
 .hero-call .hero-en {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-prose);
   font-style: italic;
   font-weight: 600;
   font-size: clamp(24px, 6vw, 30px);
@@ -87,7 +95,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   margin: 0;
 }
 .hero-call .hero-es {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-prose);
   font-style: italic;
   font-weight: 500;
   font-size: clamp(20px, 5vw, 25px);
@@ -95,7 +103,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   color: var(--ink-strong);
   margin: 10px 0 0;
 }
- 
+
 /* ============ Guidelines ============ */
 .guidelines {
   background: var(--bg-card);
@@ -106,45 +114,32 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   box-shadow: var(--shadow);
 }
 .guidelines h2 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-prose);
   font-weight: 700;
-  font-size: 24px;
+  font-size: 22px;
   margin: 0 0 16px;
   color: var(--burgundy);
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  letter-spacing: 0.005em;
+  line-height: 1.25;
 }
 .guidelines h2 .lang-es {
   display: block;
   font-weight: 500;
   font-style: italic;
-  font-size: 19px;
+  font-size: 18px;
   color: var(--ink-strong);
   margin-top: 4px;
 }
-.bilingual-list {
-  margin: 0 0 18px;
-  padding-left: 22px;
-  list-style: none;
-}
-.bilingual-list li {
-  position: relative;
-  margin-bottom: 16px;
-  padding-left: 4px;
-}
+.bilingual-list { margin: 0 0 18px; padding-left: 22px; list-style: none; }
+.bilingual-list li { position: relative; margin-bottom: 16px; padding-left: 4px; }
 .bilingual-list li::before {
   content: "✦";
   position: absolute;
-  left: -22px;
-  top: 1px;
+  left: -22px; top: 1px;
   color: var(--gold);
   font-size: 13px;
 }
-.bilingual-list .li-en {
-  display: block;
-  line-height: 1.45;
-  color: var(--ink);
-}
+.bilingual-list .li-en { display: block; line-height: 1.45; color: var(--ink); }
 .bilingual-list .li-es {
   display: block;
   font-style: italic;
@@ -155,9 +150,9 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .guidelines .quote {
   font-style: italic;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 20px;
-  line-height: 1.5;
+  font-family: var(--font-prose);
+  font-size: 18px;
+  line-height: 1.55;
   color: var(--ink-secondary);
   border-left: 3px solid var(--gold-soft);
   padding: 6px 0 6px 16px;
@@ -166,20 +161,18 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .guidelines .quote .attrib {
   display: block;
   margin-top: 10px;
-  font-size: 17px;
+  font-size: 16px;
   font-style: normal;
   color: var(--ink-strong);
   letter-spacing: 0.04em;
   font-weight: 500;
 }
- 
+
 /* ============ Day section ============ */
-.day {
-  margin-bottom: 28px;
-}
+.day { margin-bottom: 28px; }
 .day-header {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 30px;
+  font-family: var(--font-prose);
+  font-size: 24px;
   font-weight: 600;
   color: var(--ink-strong);
   display: flex;
@@ -191,24 +184,28 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   flex-wrap: wrap;
   gap: 8px;
 }
+.day-header .date-text {
+  font-family: var(--font-numeric);
+  font-weight: 600;
+}
 .day-header .day-header-es {
   display: inline-block;
   margin-left: 10px;
   font-style: italic;
-  font-size: 19px;
+  font-size: 17px;
   color: var(--ink-secondary);
   font-weight: 400;
 }
 .day-header .today {
-  font-family: 'Lora', serif;
-  font-style: italic;
-  font-size: 14px;
+  font-family: var(--font-numeric);
+  font-style: normal;
+  font-size: 13px;
   color: var(--burgundy);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 700;
 }
- 
+
 /* ============ Hour rows ============ */
 .hour-row {
   display: flex;
@@ -227,59 +224,46 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   transition: transform 80ms ease, box-shadow 120ms ease, border-color 120ms ease;
   min-height: 72px;
 }
-.hour-row:hover:not(:disabled),
-.hour-row:focus-visible:not(:disabled) {
+.hour-row:hover:not(:disabled), .hour-row:focus-visible:not(:disabled) {
   border-color: var(--ink-strong);
   box-shadow: var(--shadow);
   outline: none;
 }
 .hour-row:active:not(:disabled) { transform: scale(0.995); }
 .hour-row:disabled { cursor: not-allowed; opacity: 0.6; }
- 
 .hour-row .time {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 26px;
+  font-family: var(--font-numeric);
+  font-size: 24px;
   font-weight: 600;
   color: var(--ink-strong);
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 .hour-row .status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 17px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 16px;
   color: var(--ink);
   font-weight: 500;
+  font-family: var(--font-numeric);
 }
 .dots { display: flex; gap: 6px; }
 .dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  width: 14px; height: 14px; border-radius: 50%;
   border: 1.5px solid var(--rule);
   background: transparent;
 }
-.dot.filled {
-  background: var(--gold);
-  border-color: var(--gold);
-}
-.hour-row.full {
-  background: var(--green-bg);
-  border-color: #8fb09a;
-}
+.dot.filled { background: var(--gold); border-color: var(--gold); }
+.hour-row.full { background: var(--green-bg); border-color: #8fb09a; }
 .hour-row.full .status { color: var(--green); font-weight: 600; }
 .hour-row.full .time { color: var(--green); }
- 
-/* ============ No-slots message ============ */
+
 .no-slots {
-  text-align: center;
-  font-style: italic;
+  text-align: center; font-style: italic;
   color: var(--ink-secondary);
   padding: 40px 0;
-  font-size: 19px;
-  line-height: 1.5;
+  font-size: 19px; line-height: 1.5;
 }
 .no-slots span { font-size: 17px; display: inline-block; margin-top: 4px; }
- 
+
 /* ============ Modal ============ */
 .modal-backdrop {
   position: fixed; inset: 0;
@@ -289,7 +273,7 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   animation: fadeIn 160ms ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
- 
+
 .modal {
   background: var(--bg);
   width: 100%;
@@ -301,31 +285,31 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   animation: slideUp 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
- 
 @media (min-width: 600px) {
   .modal-backdrop { align-items: center; }
   .modal { border-radius: 8px; }
 }
- 
 .modal h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 30px;
-  font-weight: 600;
+  font-family: var(--font-prose);
+  font-size: 26px; font-weight: 700;
   margin: 0 0 4px;
   color: var(--ink-strong);
 }
 .modal .modal-sub {
+  font-family: var(--font-numeric);
   font-style: italic;
   color: var(--ink-secondary);
   margin: 0 0 22px;
-  font-size: 20px;
+  font-size: 19px;
+  font-weight: 500;
 }
- 
+
 .field { margin-bottom: 18px; }
 .field label {
   display: block;
-  font-size: 16px;
-  letter-spacing: 0.04em;
+  font-family: var(--font-numeric);
+  font-size: 14px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-strong);
   margin-bottom: 8px;
@@ -337,8 +321,9 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   text-transform: none;
   letter-spacing: 0;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   margin-left: 6px;
+  font-family: var(--font-prose);
 }
 .field label .opt {
   color: var(--ink-secondary);
@@ -346,28 +331,29 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   text-transform: none;
   letter-spacing: 0;
   font-weight: 400;
-  font-size: 14px;
+  font-size: 13px;
   margin-left: 6px;
+  font-family: var(--font-prose);
 }
 .field input[type="text"],
 .field input[type="tel"],
 .field input[type="email"],
-.field input[type="password"] {
+.field input[type="password"],
+.field input[type="date"],
+.field select {
   width: 100%;
-  padding: 15px 14px;
+  padding: 14px 14px;
   border: 1.5px solid var(--rule);
   border-radius: 4px;
   background: var(--bg-card);
-  font-size: 20px;
+  font-size: 19px;
   color: var(--ink-strong);
+  font-family: var(--font-prose);
 }
-.field input::placeholder { color: var(--ink-secondary); opacity: 0.7; }
-.field input:focus { outline: none; border-color: var(--ink-strong); }
- 
+.field input:focus, .field select:focus { outline: none; border-color: var(--ink-strong); }
+
 .checkbox-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  display: flex; align-items: flex-start; gap: 14px;
   padding: 16px;
   background: var(--bg-card);
   border: 1.5px solid var(--rule);
@@ -375,39 +361,30 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   cursor: pointer;
 }
 .checkbox-row input { margin-top: 4px; flex-shrink: 0; width: 22px; height: 22px; accent-color: var(--burgundy); }
-.checkbox-row .label-main {
-  display: block;
-  font-weight: 600;
-  color: var(--ink-strong);
-  line-height: 1.4;
-}
+.checkbox-row .label-main { display: block; font-weight: 600; color: var(--ink-strong); line-height: 1.4; }
 .checkbox-row .label-main.label-es {
-  font-weight: 400;
-  font-style: italic;
+  font-weight: 400; font-style: italic;
   color: var(--ink-secondary);
-  font-size: 17px;
-  margin-top: 3px;
+  font-size: 17px; margin-top: 3px;
 }
 .checkbox-row .label-sub {
-  display: block;
-  font-size: 15px;
-  color: var(--ink-secondary);
-  margin-top: 8px;
-  line-height: 1.4;
+  display: block; font-size: 15px; color: var(--ink-secondary);
+  margin-top: 8px; line-height: 1.4;
 }
- 
+
 .btn-row { display: flex; gap: 12px; margin-top: 26px; }
 .btn {
   flex: 1;
   padding: 18px;
   border-radius: 4px;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   border: 1.5px solid var(--ink-strong);
   background: var(--bg-card);
   color: var(--ink-strong);
   cursor: pointer;
   letter-spacing: 0.02em;
+  font-family: var(--font-prose);
 }
 .btn-primary {
   background: var(--burgundy);
@@ -415,11 +392,11 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   color: #fef9ee;
 }
 .btn-primary:disabled { opacity: 0.6; cursor: wait; }
- 
-/* ============ Toast / success ============ */
+
+/* ============ Success ============ */
 .success { text-align: center; padding: 8px 4px 4px; }
 .success .seal {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-display);
   color: var(--gold);
   font-size: 40px;
   margin-bottom: 12px;
@@ -427,15 +404,23 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .success h3 { margin: 0 0 10px; }
 .success p { color: var(--ink); margin: 0 0 6px; font-size: 18px; }
 .success-when {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 24px;
-  font-weight: 600;
+  font-family: var(--font-numeric);
+  font-size: 22px;
+  font-weight: 700;
   color: var(--burgundy);
   margin: 10px 0 18px !important;
 }
 .success-es { font-size: 16px; font-style: italic; color: var(--ink-secondary); }
- 
+
 /* ============ Admin ============ */
+.admin-h2 {
+  font-family: var(--font-prose);
+  font-weight: 700;
+  font-size: 22px;
+  margin: 24px 0 12px;
+  color: var(--ink-strong);
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: 110px repeat(12, 1fr);
@@ -452,9 +437,10 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   text-align: center;
   min-width: 38px;
   color: var(--ink-strong);
+  font-family: var(--font-numeric);
 }
 .admin-cell.day-label {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: var(--font-prose);
   font-size: 15px;
   text-align: left;
   padding-left: 10px;
@@ -463,8 +449,8 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 .admin-cell.empty { background: var(--red-bg); color: var(--red); font-weight: 700; }
 .admin-cell.partial { background: var(--amber-bg); color: #6e4a0e; font-weight: 600; }
 .admin-cell.full { background: var(--green-bg); color: var(--green); font-weight: 600; }
-.admin-cell.header { background: var(--bg); font-family: 'Cormorant Garamond', serif; font-size: 14px; padding: 6px 4px; font-weight: 600; }
- 
+.admin-cell.header { background: var(--bg); font-family: var(--font-numeric); font-size: 13px; padding: 6px 4px; font-weight: 700; letter-spacing: 0.02em; }
+
 .admin-list {
   background: var(--bg-card);
   border: 1px solid var(--rule);
@@ -474,19 +460,20 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
 }
 .admin-list-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: 1fr 1.2fr 1.5fr auto;
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--rule);
   align-items: center;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--ink-strong);
 }
 .admin-list-row:last-child { border-bottom: 0; }
 .admin-list-row.empty-flag { background: var(--red-bg); color: var(--red); font-style: italic; font-weight: 600; }
+.admin-list-row.no-show-row { background: var(--red-bg); }
 .admin-list-row .when {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
+  font-family: var(--font-numeric);
+  font-size: 16px;
   font-weight: 600;
 }
 .admin-list-row .delete-btn {
@@ -496,94 +483,54 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   border-radius: 4px;
   padding: 6px 12px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  font-family: var(--font-prose);
 }
 .admin-list-row .delete-btn:hover { color: var(--red); border-color: var(--red); }
- 
-.error-text {
-  color: var(--red);
-  font-size: 16px;
-  margin-top: 10px;
-  font-weight: 500;
+
+.checkin-line {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin-top: 4px;
 }
- 
-/* ============ Footer ============ */
-.footer {
-  text-align: center;
-  margin-top: 40px;
-  padding-top: 20px;
-  border-top: 1px solid var(--rule);
-  font-size: 15px;
-  color: var(--ink-secondary);
-  font-style: italic;
-  line-height: 1.5;
-}
-.footer span { font-size: 14px; }
- 
-/* Section headings on admin dashboard */
-.admin-h2 {
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 600;
-  font-size: 26px;
-  margin: 24px 0 12px;
-  color: var(--ink-strong);
-}
- 
-/* Live "right now" panel */
-.live-panel {
-  border: 2px solid;
-  border-radius: 8px;
-  padding: 20px 22px;
-  margin: 16px 0 28px;
-}
-.live-panel.ok {
-  background: var(--green-bg);
-  border-color: #6da077;
+.checkin-green {
   color: var(--green);
-}
-.live-panel.warn {
-  background: var(--amber-bg);
-  border-color: #d4a945;
-  color: #5e3e0a;
-}
-.live-label {
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-.live-message {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 14px;
-}
-.live-names { display: flex; flex-wrap: wrap; gap: 8px; }
-.live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-.live-pill.in { background: #fff; color: var(--green); }
-.live-pill.pending { background: rgba(255, 255, 255, 0.5); color: var(--ink-strong); }
- 
-/* No-show row indicators */
-.admin-list-row.no-show-row { background: var(--red-bg); }
-.no-show-note {
-  color: var(--red);
   font-size: 13px;
   font-weight: 600;
-  margin-top: 3px;
+  font-family: var(--font-numeric);
+}
+.checkout-grey {
+  color: var(--ink-secondary);
+  font-size: 13px;
   font-style: italic;
+  font-family: var(--font-numeric);
 }
+
+.lateness-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-numeric);
+}
+.lateness-badge.late { background: var(--amber-bg); color: #6e4a0e; border: 1px solid #d4a945; }
+.lateness-badge.veryLate { background: var(--red-bg); color: var(--red); border: 1px solid #c87878; }
+.lateness-badge.early { background: #eaf2ec; color: var(--green); border: 1px solid #b8d0bd; }
+
+.history-note {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  font-size: 13px; margin-top: 3px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.history-note .hist-no-show { color: var(--red); }
+.history-note .hist-late { color: #6e4a0e; }
+.history-note .hist-attended { color: var(--ink-secondary); font-style: normal; font-weight: 400; }
+
 .paused-tag {
   display: inline-block;
   margin-left: 6px;
@@ -596,4 +543,81 @@ input, textarea, select { font-family: inherit; font-size: 20px; }
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-style: normal;
+  font-family: var(--font-numeric);
 }
+
+/* Live "right now" panel */
+.live-panel {
+  border: 2px solid;
+  border-radius: 8px;
+  padding: 20px 22px;
+  margin: 16px 0 28px;
+}
+.live-panel.ok { background: var(--green-bg); border-color: #6da077; color: var(--green); }
+.live-panel.warn { background: var(--amber-bg); border-color: #d4a945; color: #5e3e0a; }
+.live-label {
+  font-family: var(--font-numeric);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.live-message {
+  font-family: var(--font-prose);
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.live-volunteers { display: flex; flex-direction: column; gap: 8px; }
+.live-volunteer {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.live-volunteer.in { background: #fff; }
+.live-volunteer .lv-status { font-weight: 700; font-family: var(--font-numeric); }
+.live-volunteer.in .lv-status { color: var(--green); }
+.live-volunteer.pending .lv-status { color: var(--ink-strong); }
+.live-volunteer .lv-name { font-weight: 600; color: var(--ink-strong); }
+.live-volunteer .lv-phone {
+  color: var(--ink-secondary);
+  font-family: var(--font-numeric);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.live-volunteer .lv-time {
+  color: var(--ink-secondary);
+  font-family: var(--font-numeric);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Manual signup add card */
+.manual-add-card {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 18px 18px 8px;
+  margin-top: 12px;
+}
+
+/* ============ Footer ============ */
+.footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-size: 15px;
+  color: var(--ink-secondary);
+  font-style: italic;
+  line-height: 1.5;
+}
+.footer span { font-size: 14px; }
+
+.error-text { color: var(--red); font-size: 16px; margin-top: 10px; font-weight: 500; }
+
+.lang-es { display: block; font-style: italic; color: var(--ink-secondary); font-size: 17px; margin-top: 2px; font-weight: 400; }
