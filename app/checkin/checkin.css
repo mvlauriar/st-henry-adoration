@@ -1,5 +1,4 @@
-/* ============ Check-in iPad page ============ */
-/* This stylesheet is loaded by the /checkin route only — see app/checkin/layout.js */
+/* iPad check-in styles — loaded only on /checkin */
 
 :root {
   --ci-bg: #faf6ee;
@@ -11,80 +10,78 @@
   --ci-gold: #8a6418;
   --ci-burgundy: #5a1818;
   --ci-green: #234d2e;
-  --ci-green-bg: #d6e6db;
+  --ci-green-bg: #ecf3ec;
   --ci-red: #8e2222;
   --ci-red-bg: #f7d8d8;
   --ci-amber: #b07a14;
   --ci-amber-bg: #fce7b8;
+
+  --font-display: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --font-prose: 'Lora', Georgia, serif;
+  --font-numeric: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
 }
 
 .ci-page {
   min-height: 100vh;
   background: var(--ci-bg);
   color: var(--ci-ink);
-  font-family: 'Lora', Georgia, serif;
+  font-family: var(--font-prose);
   padding: 32px 40px 48px;
   max-width: 1100px;
   margin: 0 auto;
 }
-
 .ci-page.ci-uncovered { background: linear-gradient(to bottom, #f7d8d8 0%, var(--ci-bg) 240px); }
 
 .ci-loading, .ci-outside {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; min-height: 100vh; gap: 16px;
 }
-.ci-outside h1 { font-family: 'Cormorant Garamond', serif; font-size: 48px; margin: 8px 0; color: var(--ci-ink-strong); }
+.ci-outside h1 { font-family: var(--font-display); font-size: 48px; margin: 8px 0; color: var(--ci-ink-strong); font-weight: 600; }
 .ci-outside p { font-size: 22px; color: var(--ci-ink-secondary); margin: 0; }
-.ci-outside .ci-ornament { color: var(--ci-gold); letter-spacing: 0.5em; font-size: 32px; }
-
-/* ============ Alert banner (uncovered hour) ============ */
-.ci-alert-banner {
-  background: var(--ci-red);
-  color: #fff;
-  padding: 24px 32px;
-  border-radius: 8px;
-  margin-bottom: 24px;
-  text-align: center;
-  box-shadow: 0 4px 16px rgba(142, 34, 34, 0.3);
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 4px 16px rgba(142, 34, 34, 0.3); }
-  50%       { box-shadow: 0 4px 28px rgba(142, 34, 34, 0.55); }
-}
-.ci-alert-line-1 { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 600; margin-bottom: 8px; }
-.ci-alert-line-2 { font-size: 20px; }
-.ci-alert-line-2.ci-es { font-style: italic; opacity: 0.92; margin-top: 4px; }
+.ci-outside .ci-ornament { color: var(--ci-gold); letter-spacing: 0.5em; font-size: 32px; font-family: var(--font-display); }
 
 /* ============ Header ============ */
 .ci-header {
   text-align: center;
-  padding: 16px 0 32px;
+  padding: 16px 0 28px;
   border-bottom: 1px solid var(--ci-rule);
   margin-bottom: 32px;
 }
 .ci-date {
-  font-family: 'Cormorant Garamond', serif;
-  font-style: italic;
-  font-size: 26px;
+  font-family: var(--font-numeric);
+  font-style: normal;
+  font-weight: 500;
+  font-size: 22px;
   color: var(--ci-ink-secondary);
   margin-bottom: 4px;
+  letter-spacing: 0.01em;
 }
 .ci-hour {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(56px, 8vw, 84px);
-  font-weight: 600;
+  font-family: var(--font-numeric);
+  font-size: clamp(56px, 9vw, 88px);
+  font-weight: 700;
   color: var(--ci-ink-strong);
   margin: 0;
   line-height: 1;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
+.ci-hour-status {
+  margin-top: 14px;
+  font-family: var(--font-prose);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.ci-hour-status.covered { color: var(--ci-green); }
+.ci-hour-status.uncovered { color: var(--ci-burgundy); }
+.ci-hour-status .ci-es-inline { font-style: italic; font-weight: 400; opacity: 0.85; }
 
 /* ============ Section labels ============ */
 .ci-section { margin-bottom: 36px; }
 .ci-section-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
+  font-family: var(--font-prose);
+  font-size: 24px;
   font-weight: 600;
   color: var(--ci-burgundy);
   margin: 0 0 18px;
@@ -92,7 +89,7 @@
 }
 .ci-section-title .ci-section-es {
   display: block;
-  font-size: 20px;
+  font-size: 18px;
   font-style: italic;
   font-weight: 400;
   color: var(--ci-ink-secondary);
@@ -105,23 +102,22 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
-@media (min-width: 900px) {
-  .ci-tile-grid { grid-template-columns: repeat(2, 1fr); }
-}
 
 .ci-tile {
   background: var(--ci-bg-card);
   border: 2px solid var(--ci-rule);
   border-radius: 10px;
   padding: 24px 22px;
-  text-align: left;
+  text-align: center;
   font: inherit;
   color: inherit;
   cursor: pointer;
-  min-height: 130px;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
   transition: transform 80ms ease, border-color 100ms ease, box-shadow 120ms ease;
 }
 .ci-tile:hover:not(:disabled), .ci-tile:focus:not(:disabled) {
@@ -132,32 +128,40 @@
 .ci-tile:active:not(:disabled) { transform: scale(0.99); }
 
 .ci-tile-name {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 32px;
-  font-weight: 600;
+  font-family: var(--font-prose);
+  font-size: 30px;
+  font-weight: 700;
   color: var(--ci-ink-strong);
   line-height: 1.15;
 }
-.ci-tile-phone {
-  font-size: 16px;
+.ci-tile-action {
+  font-size: 14px;
+  font-family: var(--font-numeric);
   color: var(--ci-ink-secondary);
-  margin: 4px 0 12px;
-  letter-spacing: 0.04em;
-}
-.ci-tile-status {
-  font-size: 17px;
-  color: var(--ci-ink);
   font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.ci-tile-action-es { font-style: italic; opacity: 0.85; }
+.ci-tile-status {
+  font-family: var(--font-numeric);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ci-green);
+  letter-spacing: 0.02em;
 }
 
 .ci-tile.checked-in {
   background: var(--ci-green-bg);
   border-color: #6da077;
-  cursor: default;
 }
 .ci-tile.checked-in .ci-tile-name { color: var(--ci-green); }
-.ci-tile.checked-in .ci-tile-status { color: var(--ci-green); font-weight: 600; }
-.ci-tile:disabled { cursor: default; }
+
+.ci-tile.checked-out {
+  background: #f0ece2;
+  border-color: var(--ci-rule);
+}
+.ci-tile.checked-out .ci-tile-name { color: var(--ci-ink-secondary); }
+.ci-tile.checked-out .ci-tile-status { color: var(--ci-ink-secondary); }
 
 .ci-empty {
   background: var(--ci-bg-card);
@@ -169,131 +173,123 @@
   color: var(--ci-ink-secondary);
   font-style: italic;
 }
-.ci-empty .ci-es, .ci-es { display: block; font-style: italic; color: var(--ci-ink-secondary); }
+.ci-empty .ci-es, .ci-es { display: block; font-style: italic; color: var(--ci-ink-secondary); font-size: 17px; margin-top: 4px; }
 
-/* ============ Walk-in section ============ */
-.ci-walkin-section { margin: 32px 0; }
-.ci-walkin-btn {
+/* ============ Substitute section ============ */
+.ci-substitute-section { margin: 32px 0; }
+.ci-substitute-card {
+  background: #fff8e3;
+  border: 2px solid var(--ci-amber);
+  border-radius: 10px;
+  padding: 24px 22px;
+}
+.ci-substitute-card h3 {
+  font-family: var(--font-prose);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #5e3e0a;
+}
+.ci-substitute-card > p {
+  margin: 0 0 14px;
+  color: var(--ci-ink-secondary);
+  font-style: italic;
+  font-size: 18px;
+}
+.ci-substitute-warning {
+  background: rgba(255, 255, 255, 0.6);
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 16px;
+  color: var(--ci-ink-strong);
+  line-height: 1.45;
+}
+.ci-substitute-warning.ci-es {
+  font-style: italic;
+  color: var(--ci-ink-secondary);
+  display: block;
+}
+.ci-substitute-btn {
   display: block;
   width: 100%;
   background: var(--ci-burgundy);
   color: #fef9ee;
   border: 0;
   border-radius: 10px;
-  padding: 24px;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  font-weight: 600;
+  padding: 22px;
+  font-family: var(--font-prose);
+  font-size: 22px;
+  font-weight: 700;
   cursor: pointer;
+  margin-top: 14px;
   letter-spacing: 0.02em;
 }
-.ci-walkin-btn .ci-walkin-es {
-  display: block;
-  font-size: 18px;
+.ci-substitute-btn-es {
+  font-size: 16px;
   font-style: italic;
   font-weight: 400;
-  margin-top: 4px;
-  opacity: 0.92;
+  opacity: 0.9;
 }
-.ci-walkin-btn:active { transform: scale(0.995); }
+.ci-substitute-btn:active { transform: scale(0.995); }
 
-.ci-walkin-form {
-  background: var(--ci-bg-card);
-  border: 2px solid var(--ci-burgundy);
-  border-radius: 10px;
-  padding: 28px;
-}
-.ci-walkin-form h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 28px;
-  margin: 0 0 8px;
-  color: var(--ci-ink-strong);
-}
-.ci-walkin-help {
-  font-style: italic;
-  color: var(--ci-ink-secondary);
-  margin: 0 0 20px;
-  font-size: 17px;
-}
-.ci-field { margin-bottom: 18px; }
-.ci-field label {
-  display: block;
-  font-size: 15px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ci-ink-strong);
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-.ci-field input {
-  width: 100%;
-  padding: 18px;
-  border: 2px solid var(--ci-rule);
-  border-radius: 6px;
-  background: var(--ci-bg);
-  font-size: 22px;
-  font-family: inherit;
-  color: var(--ci-ink-strong);
-}
-.ci-field input:focus { outline: none; border-color: var(--ci-ink-strong); }
-
-.ci-walkin-actions { display: flex; gap: 12px; margin-top: 20px; }
-.ci-btn-primary, .ci-btn-secondary {
-  flex: 1;
-  padding: 18px;
-  border-radius: 6px;
-  font-size: 19px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-}
-.ci-btn-primary { background: var(--ci-burgundy); color: #fef9ee; border: 0; }
-.ci-btn-secondary { background: var(--ci-bg-card); color: var(--ci-ink-strong); border: 2px solid var(--ci-ink-strong); }
-.ci-error { color: var(--ci-red); font-size: 16px; margin-top: 8px; font-weight: 500; }
-
-.ci-waiting {
+/* ============ Next hour section ============ */
+.ci-next-hour-section { margin-top: 40px; }
+.ci-next-divider {
   text-align: center;
+  border-top: 1px dashed var(--ci-rule);
+  margin: 0 0 24px;
+  padding-top: 0;
+  position: relative;
+}
+.ci-next-divider-label {
+  display: inline-block;
+  background: var(--ci-bg);
+  padding: 0 16px;
+  position: relative;
+  top: -12px;
+  font-family: var(--font-numeric);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--ci-ink-secondary);
-  font-style: italic;
-  font-size: 16px;
-  margin: 32px 0;
-  padding: 16px;
-  border: 1px dashed var(--ci-rule);
-  border-radius: 6px;
 }
-
-/* ============ Next hour preview ============ */
-.ci-next-hour {
-  background: var(--ci-bg-card);
-  border: 1px solid var(--ci-rule);
-  border-radius: 8px;
-  padding: 20px 22px;
-  margin-top: 32px;
-}
-.ci-next-hour h3 {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 22px;
-  font-weight: 600;
-  margin: 0 0 12px;
-  color: var(--ci-ink-strong);
-}
-.ci-next-list { display: flex; flex-direction: column; gap: 6px; }
-.ci-next-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 18px;
-  padding: 6px 0;
-}
-.ci-next-checked { color: var(--ci-green); font-weight: 600; font-size: 15px; }
 
 /* ============ Footer ============ */
 .ci-footer {
-  text-align: center;
   margin-top: 48px;
-  padding-top: 20px;
+  padding-top: 24px;
   border-top: 1px solid var(--ci-rule);
+}
+.ci-footer-contact {
+  background: var(--ci-bg-card);
+  border: 1px solid var(--ci-rule);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ci-ink);
+}
+.ci-footer-contact.ci-es {
+  font-style: italic;
+  color: var(--ci-ink-secondary);
   font-size: 14px;
+  display: block;
+}
+.ci-footer-phone {
+  font-family: var(--font-numeric);
+  font-weight: 700;
+  color: var(--ci-burgundy);
+  letter-spacing: 0.02em;
+  font-style: normal;
+}
+.ci-footer-meta {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 12px;
   color: var(--ci-ink-secondary);
   font-style: italic;
+  letter-spacing: 0.05em;
 }
