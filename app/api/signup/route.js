@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
-import { upcomingDates, HOURS, SLOTS_PER_HOUR, slotIsPast } from '../../../lib/dates';
+import { upcomingDates, HOURS, SLOTS_PER_HOUR, slotHasEnded } from '../../../lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +35,8 @@ export async function POST(req) {
   if (!slot_date || !/^\d{4}-\d{2}-\d{2}$/.test(slot_date)) return bad('Invalid date.');
   const hour = parseInt(slot_hour, 10);
   if (!Number.isInteger(hour) || !HOURS.includes(hour)) return bad('Invalid hour.');
-  if (slotIsPast(slot_date, hour)) return bad('That time has already passed.');
+  // Allow signups for the current in-progress hour; reject only fully-ended hours
+  if (slotHasEnded(slot_date, hour)) return bad('That time has already passed.');
 
   const supabase = supabaseAdmin();
 
@@ -49,7 +50,7 @@ export async function POST(req) {
   if (countErr) return fail(countErr.message);
   if ((existing ?? 0) >= SLOTS_PER_HOUR) return bad('That hour is now full. Please choose another.');
 
-  // Build the rows we want to insert. If recurring, add copies for the next 3 weeks.
+  // Build rows to insert. Recurring = 3 more weekly copies.
   const groupId = recurring ? cryptoRandom() : null;
   const rows = [{
     slot_date,
@@ -62,7 +63,6 @@ export async function POST(req) {
   }];
 
   if (recurring) {
-    // Add 3 more weekly copies — but only if the slot has room and isn't already taken by this person.
     for (let w = 1; w <= 3; w++) {
       const future = addWeeks(slot_date, w);
       const room = await hasRoom(supabase, future, hour);
@@ -77,8 +77,6 @@ export async function POST(req) {
           recurring_group_id: groupId,
         });
       }
-      // If a future week is full, we silently skip it — the user still gets their primary slot
-      // and as many future copies as fit.
     }
   }
 
@@ -108,7 +106,6 @@ function addWeeks(ymd, weeks) {
 }
 
 function cryptoRandom() {
-  // crypto.randomUUID is available in Node 18+ on Vercel
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 }
 
