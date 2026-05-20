@@ -3,13 +3,13 @@ import { supabaseAdmin } from '../../../lib/supabase';
 import {
   currentAdorationHour,
   WALK_IN_UNLOCK_MINUTES,
-  formatTimestamp,
+  abbreviateName,
   SLOTS_PER_HOUR,
 } from '../../../lib/dates';
 
 export const dynamic = 'force-dynamic';
 
-// GET — return the current state for the iPad to render
+// GET — return current state for the iPad (NO phone numbers, NO exact timestamps in public response)
 export async function GET() {
   const { date, current, next, minute } = currentAdorationHour();
 
@@ -22,27 +22,36 @@ export async function GET() {
   }
 
   const supabase = supabaseAdmin();
-
-  // Get all signups for the current hour AND the next hour (for early arrivals)
   const hoursToFetch = next ? [current, next] : [current];
+
   const { data: signups, error } = await supabase
     .from('signups')
-    .select('id, slot_date, slot_hour, name, phone, checked_in_at, walk_in')
+    .select('id, slot_date, slot_hour, name, checked_in_at, checked_out_at')
     .eq('slot_date', date)
     .in('slot_hour', hoursToFetch)
-    .order('checked_in_at', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const currentList = (signups || []).filter((s) => s.slot_hour === current);
+  const nextList = (signups || []).filter((s) => s.slot_hour === next);
+
+  // Someone is "actively here" if they're checked in AND not checked out
+  const activelyPresent = currentList.filter((s) => s.checked_in_at && !s.checked_out_at).length;
+  const isUncovered = activelyPresent === 0;
+
+  // Substitute prompt unlocks if uncovered AND we're past the unlock minute threshold
+  const substituteUnlocked = isUncovered && minute >= WALK_IN_UNLOCK_MINUTES;
+
+  function publicTile(s) {
+    return {
+      id: s.id,
+      displayName: abbreviateName(s.name),
+      // No phone, no checked_in_at timestamp, no exact times shown publicly
+      isCheckedIn: !!s.checked_in_at && !s.checked_out_at,
+      hasCheckedOut: !!s.checked_out_at,
+    };
   }
-
-  const currentHourSignups = (signups || []).filter((s) => s.slot_hour === current);
-  const nextHourSignups = (signups || []).filter((s) => s.slot_hour === next);
-
-  const checkedInCount = currentHourSignups.filter((s) => s.checked_in_at).length;
-  const walkInUnlocked = minute >= WALK_IN_UNLOCK_MINUTES && checkedInCount === 0;
-  const isUncovered = walkInUnlocked; // same condition triggers the alert banner
 
   return NextResponse.json({
     outsideHours: false,
@@ -50,118 +59,63 @@ export async function GET() {
     currentHour: current,
     nextHour: next,
     minute,
-    walkInUnlocked,
     isUncovered,
+    substituteUnlocked,
     walkInUnlockMinutes: WALK_IN_UNLOCK_MINUTES,
-    currentHourSignups: currentHourSignups.map((s) => ({
-      id: s.id,
-      name: s.name,
-      phone: maskPhone(s.phone),
-      checkedInAt: s.checked_in_at,
-      checkedInAtFormatted: s.checked_in_at ? formatTimestamp(s.checked_in_at) : null,
-      walkIn: s.walk_in,
-    })),
-    nextHourSignups: nextHourSignups.map((s) => ({
-      id: s.id,
-      name: s.name,
-      phone: maskPhone(s.phone),
-      checkedInAt: s.checked_in_at,
-      checkedInAtFormatted: s.checked_in_at ? formatTimestamp(s.checked_in_at) : null,
-    })),
+    currentHourSignups: currentList.map(publicTile),
+    nextHourSignups: nextList.map(publicTile),
+    hourIsCovered: !isUncovered,
   });
 }
 
-// POST — check someone in (scheduled or walk-in)
+// POST — check in or check out
 export async function POST(req) {
   let body;
   try { body = await req.json(); } catch { return bad('Invalid request.'); }
 
-  const { date, current, next, minute } = currentAdorationHour();
+  const { date, current, next } = currentAdorationHour();
   if (current === null) return bad('The chapel is outside Adoration hours.');
 
   const supabase = supabaseAdmin();
 
-  // Mode 1: check in an existing signup by id
-  if (body.signupId) {
-    // Verify the signup is for the current or next hour (no backdating past hours)
-    const { data: existing, error: fetchErr } = await supabase
-      .from('signups')
-      .select('id, slot_date, slot_hour, checked_in_at')
-      .eq('id', body.signupId)
-      .single();
-    if (fetchErr || !existing) return bad('Signup not found.');
-    if (existing.slot_date !== date) return bad('Cannot check in for a different day.');
-    if (existing.slot_hour !== current && existing.slot_hour !== next) {
-      return bad('Cannot check in for that hour.');
-    }
-    if (existing.checked_in_at) {
-      return NextResponse.json({ ok: true, alreadyCheckedIn: true });
-    }
+  if (!body.signupId) return bad('Missing signup id.');
+
+  // Verify slot
+  const { data: existing, error: fetchErr } = await supabase
+    .from('signups')
+    .select('id, slot_date, slot_hour, checked_in_at, checked_out_at')
+    .eq('id', body.signupId)
+    .single();
+  if (fetchErr || !existing) return bad('Signup not found.');
+  if (existing.slot_date !== date) return bad('Cannot check in for a different day.');
+  if (existing.slot_hour !== current && existing.slot_hour !== next) {
+    return bad('Cannot check in for that hour.');
+  }
+
+  const action = body.action || 'checkin';
+
+  if (action === 'checkout') {
+    if (!existing.checked_in_at) return bad('Cannot check out before checking in.');
+    if (existing.checked_out_at) return NextResponse.json({ ok: true, alreadyCheckedOut: true });
     const { error: updErr } = await supabase
       .from('signups')
-      .update({ checked_in_at: new Date().toISOString() })
+      .update({ checked_out_at: new Date().toISOString() })
       .eq('id', body.signupId);
     if (updErr) return fail(updErr.message);
     return NextResponse.json({ ok: true });
   }
 
-  // Mode 2: walk-in (creates a new signup AND checks in)
-  if (body.walkIn) {
-    const { name, phone } = body;
-    if (!name || !name.trim()) return bad('Name is required for walk-in.');
-    if (!phone || phone.replace(/\D/g, '').length < 10) {
-      return bad('Valid phone number is required for walk-in.');
-    }
-
-    // Walk-in only allowed if conditions are met
-    if (minute < WALK_IN_UNLOCK_MINUTES) {
-      return bad(`Walk-in unlocks ${WALK_IN_UNLOCK_MINUTES} minutes into the hour.`);
-    }
-
-    // Check that no scheduled volunteer has checked in
-    const { count: checkedIn, error: countErr } = await supabase
-      .from('signups')
-      .select('id', { count: 'exact', head: true })
-      .eq('slot_date', date)
-      .eq('slot_hour', current)
-      .not('checked_in_at', 'is', null);
-    if (countErr) return fail(countErr.message);
-    if ((checkedIn ?? 0) > 0) {
-      return bad('A scheduled volunteer has already checked in for this hour.');
-    }
-
-    // Check capacity (still cap at SLOTS_PER_HOUR total)
-    const { count: total } = await supabase
-      .from('signups')
-      .select('id', { count: 'exact', head: true })
-      .eq('slot_date', date)
-      .eq('slot_hour', current);
-    if ((total ?? 0) >= SLOTS_PER_HOUR) {
-      return bad('This hour is full.');
-    }
-
-    const { error: insErr } = await supabase.from('signups').insert({
-      slot_date: date,
-      slot_hour: current,
-      name: name.trim(),
-      phone: phone.trim(),
-      walk_in: true,
-      checked_in_at: new Date().toISOString(),
-    });
-    if (insErr) return fail(insErr.message);
-
-    return NextResponse.json({ ok: true, walkIn: true });
+  // Default: check-in. If they previously checked out, re-checking in clears the checkout.
+  if (existing.checked_in_at && !existing.checked_out_at) {
+    return NextResponse.json({ ok: true, alreadyCheckedIn: true });
   }
+  const update = existing.checked_in_at
+    ? { checked_out_at: null } // re-check-in: clear the previous checkout
+    : { checked_in_at: new Date().toISOString() };
 
-  return bad('No action specified.');
-}
-
-// Show only last 4 digits of phone on the iPad to protect privacy
-function maskPhone(p) {
-  if (!p) return '';
-  const digits = p.replace(/\D/g, '');
-  if (digits.length < 4) return '';
-  return `••• ${digits.slice(-4)}`;
+  const { error: updErr } = await supabase.from('signups').update(update).eq('id', body.signupId);
+  if (updErr) return fail(updErr.message);
+  return NextResponse.json({ ok: true });
 }
 
 function bad(msg) { return NextResponse.json({ error: msg }, { status: 400 }); }
