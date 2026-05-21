@@ -174,70 +174,63 @@
 }
 .ci-empty .ci-es, .ci-es { display: block; font-style: italic; color: var(--ci-ink-secondary); font-size: 17px; margin-top: 4px; }
 
-/* ============ Substitute section ============ */
+/* ============ Substitute section — instruction card, NOT a button ============ */
 .ci-substitute-section { margin: 32px 0; }
 .ci-substitute-card {
   background: #fff8e3;
   border: 2px solid var(--ci-amber);
   border-radius: 10px;
-  padding: 24px 22px;
+  padding: 28px 26px;
+  text-align: center;
 }
 .ci-substitute-card h3 {
   font-family: var(--font-prose);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 500;
   margin: 0 0 4px;
   color: #5e3e0a;
 }
 .ci-substitute-card > p {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.ci-substitute-card > p.ci-es {
   color: var(--ci-ink-secondary);
   font-style: italic;
+  margin: 0 0 18px;
+}
+.ci-substitute-instructions {
+  background: rgba(255, 255, 255, 0.65);
+  padding: 16px 18px;
+  border-radius: 8px;
+  margin: 12px 0 !important;
   font-size: 18px;
-}
-.ci-substitute-warning {
-  background: rgba(255, 255, 255, 0.6);
-  padding: 12px 14px;
-  border-radius: 6px;
-  margin: 12px 0;
-  font-size: 16px;
   color: var(--ci-ink-strong);
-  line-height: 1.45;
+  line-height: 1.5;
+  text-align: left;
 }
-.ci-substitute-warning.ci-es {
+.ci-substitute-instructions.ci-es {
   font-style: italic;
   color: var(--ci-ink-secondary);
-  display: block;
+  font-size: 16px;
 }
-.ci-substitute-btn {
-  display: block;
-  width: 100%;
-  background: var(--ci-burgundy);
-  color: #fef9ee;
-  border: 0;
-  border-radius: 10px;
-  padding: 22px;
+.ci-substitute-instructions strong { color: var(--ci-burgundy); }
+.ci-substitute-reminder {
+  margin: 18px 0 0 !important;
   font-family: var(--font-prose);
-  font-size: 22px;
-  font-weight: 500;
-  cursor: pointer;
-  margin-top: 14px;
+  font-style: italic;
+  font-size: 15px;
+  color: var(--ci-ink-secondary);
   letter-spacing: 0.02em;
 }
-.ci-substitute-btn-es {
-  font-size: 16px;
-  font-style: italic;
-  font-weight: 400;
-  opacity: 0.9;
-}
-.ci-substitute-btn:active { transform: scale(0.995); }
 
-/* ============ Next hour section ============ */
+/* ============ Next hour section — same tile size as current hour ============ */
 .ci-next-hour-section { margin-top: 40px; }
 .ci-next-divider {
   text-align: center;
   border-top: 1px dashed var(--ci-rule);
-  margin: 0 0 24px;
+  margin: 0 0 32px;
   padding-top: 0;
   position: relative;
 }
