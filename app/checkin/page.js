@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { formatHourRange, formatDateLabelFull, makeSlotKey } from '../../lib/dates';
+import { formatHourRange, formatDateLabelFull } from '../../lib/dates';
 
 const PARISH_PHONE = '(954) 785-2450';
 
@@ -55,12 +55,6 @@ export default function CheckInPage() {
       if (!res.ok) { alert(data.error || 'Could not check out.'); return; }
       load();
     } catch (e) { alert('Connection error.'); }
-  }
-
-  function goToSubstituteSignup(hour) {
-    if (!state) return;
-    const slotKey = makeSlotKey(state.date, hour);
-    window.location.href = `/?slot=${slotKey}&mode=substitute`;
   }
 
   if (loading) return <div className="ci-page ci-loading">Loading…</div>;
@@ -119,16 +113,15 @@ export default function CheckInPage() {
           <div className="ci-substitute-card">
             <h3>The chapel needs a substitute for this hour.</h3>
             <p className="ci-es">La capilla necesita un sustituto para esta hora.</p>
-            <p className="ci-substitute-warning">
-              The Blessed Sacrament cannot be left alone. If you can stay for the <strong>full hour</strong>, please sign up.
+            <p className="ci-substitute-instructions">
+              If you can stay for the <strong>full hour</strong>, please scan the QR code near the chapel door to register, then return here to check in.
             </p>
-            <p className="ci-substitute-warning ci-es">
-              El Santísimo no puede quedar solo. Si puede quedarse la <strong>hora completa</strong>, por favor regístrese.
+            <p className="ci-substitute-instructions ci-es">
+              Si puede quedarse la <strong>hora completa</strong>, por favor escanee el código QR cerca de la puerta de la capilla para registrarse, y regrese aquí para registrar su llegada.
             </p>
-            <button className="ci-substitute-btn" onClick={() => goToSubstituteSignup(currentHour)}>
-              Sign up as substitute<br/>
-              <span className="ci-substitute-btn-es">Registrarse como sustituto</span>
-            </button>
+            <p className="ci-substitute-reminder">
+              The Blessed Sacrament cannot be left alone. · El Santísimo no puede quedar solo.
+            </p>
           </div>
         </section>
       )}
