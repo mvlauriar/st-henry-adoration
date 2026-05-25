@@ -1,85 +1,80 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
-import { todayInParish, slotHasEnded } from '../../../../lib/dates';
 import { sendAlert } from '../../../../lib/alerts';
 
 export const dynamic = 'force-dynamic';
 
-function authorized(req) {
-  const auth = req.headers.get('authorization') || '';
-  const secret = process.env.CRON_SECRET;
-  if (secret && auth === `Bearer ${secret}`) return true;
-  if (req.headers.get('x-vercel-cron')) return true;
-  return false;
+function checkAuth(req) {
+  const header = req.headers.get('authorization') || '';
+  const expected = `Bearer ${process.env.CRON_SECRET || ''}`;
+  return process.env.CRON_SECRET && header === expected;
 }
 
-// Runs once daily (e.g. 5 AM parish time). Marks past-and-unattended signups as no-shows,
-// pauses their recurring chains, and sends each affected volunteer an alert email.
 export async function GET(req) {
-  if (process.env.CRON_SECRET && !authorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Feature flag: only run the no-show sweep when check-in is live.
+  // Set CHECKIN_ENABLED=true in Vercel once the iPad is deployed at the chapel.
+  if (process.env.CHECKIN_ENABLED !== 'true') {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: 'CHECKIN_ENABLED is not "true" — no-show tracking is paused.',
+    });
   }
 
-  const today = todayInParish();
   const supabase = supabaseAdmin();
 
-  // Look back up to 2 days (catches anything not yet swept)
-  const lookback = new Date();
-  lookback.setUTCDate(lookback.getUTCDate() - 2);
-  const lookbackDate = lookback.toISOString().slice(0, 10);
+  // Yesterday in parish timezone
+  const tz = process.env.PARISH_TIMEZONE || 'America/New_York';
+  const now = new Date();
+  const yfmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+  const today = yfmt.format(now);
+  const [ty, tm, td] = today.split('-').map(Number);
+  const yesterday = new Date(Date.UTC(ty, tm - 1, td - 1, 12));
+  const yy = yesterday.getUTCFullYear();
+  const ym = String(yesterday.getUTCMonth() + 1).padStart(2, '0');
+  const yd = String(yesterday.getUTCDate()).padStart(2, '0');
+  const ymd = `${yy}-${ym}-${yd}`;
 
-  // Pull signups that have ended, were not checked in, and not yet marked no-show
-  const { data: candidates, error } = await supabase
+  // Find yesterday's signups with no check-in
+  const { data: missed, error } = await supabase
     .from('signups')
-    .select('id, name, phone, email, slot_date, slot_hour, recurring, recurring_group_id, walk_in')
-    .gte('slot_date', lookbackDate)
-    .lte('slot_date', today)
+    .select('id, name, email, phone, recurring, recurring_group_id, slot_date, slot_hour')
+    .eq('slot_date', ymd)
     .is('checked_in_at', null)
-    .eq('no_show', false)
-    .eq('walk_in', false); // walk-ins are always checked in, but extra safety
+    .eq('no_show', false);
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   let marked = 0;
-  let pausedGroups = new Set();
-  let notified = 0;
+  const pausedGroups = new Set();
 
-  for (const s of candidates || []) {
-    if (!slotHasEnded(s.slot_date, s.slot_hour)) continue;
-
-    // Mark this signup as no-show
-    await supabase.from('signups').update({ no_show: true }).eq('id', s.id);
+  for (const row of missed || []) {
+    // Mark as no-show
+    await supabase.from('signups').update({ no_show: true }).eq('id', row.id);
     marked++;
 
-    // Pause any future recurring slots in the same group
-    if (s.recurring && s.recurring_group_id && !pausedGroups.has(s.recurring_group_id)) {
+    // If recurring, pause the whole chain so future weeks don't auto-fire
+    if (row.recurring && row.recurring_group_id && !pausedGroups.has(row.recurring_group_id)) {
       await supabase
         .from('signups')
         .update({ recurring_paused: true })
-        .eq('recurring_group_id', s.recurring_group_id)
-        .gte('slot_date', today)
-        .is('checked_in_at', null);
-      pausedGroups.add(s.recurring_group_id);
+        .eq('recurring_group_id', row.recurring_group_id);
+      pausedGroups.add(row.recurring_group_id);
 
-      // Notify the volunteer via email if we have one
-      if (s.email && s.email.includes('@')) {
-        const subject = 'St. Henry Adoration — recurring sign-ups paused';
-        const message = [
-          `Dear ${s.name},`,
-          ``,
-          `We didn't see you check in for your scheduled Adoration hour on ${s.slot_date}.`,
-          ``,
-          `Because you are part of our recurring sign-up list, we have paused your future weekly slots to make sure another volunteer can cover them.`,
-          ``,
-          `If this was a mistake or you would like to resume, please contact the parish office and we will restore your weekly slot.`,
-          ``,
-          `May the Lord bless you,`,
-          `St. Henry Adoration`,
-        ].join('\n');
-        await sendAlert({ subject, message, coordinators: [{ email: s.email, name: s.name }] });
-        notified++;
+      // Notify volunteer
+      if (row.email || row.phone) {
+        await sendAlert({
+          to: { email: row.email, phone: row.phone },
+          subject: 'Your recurring Adoration signup is paused',
+          message: `Hello ${row.name}, we noticed you missed your recent Adoration hour. Your recurring signup has been paused. If you'd like to resume, please contact the parish office or sign up again.`,
+        });
       }
     }
   }
 
-  return NextResponse.json({ ok: true, marked, pausedGroups: pausedGroups.size, notified });
+  return NextResponse.json({ ok: true, marked, pausedGroups: pausedGroups.size });
 }
