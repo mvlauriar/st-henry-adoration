@@ -10,6 +10,10 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Read this from window because it's a client component.
+  // Set NEXT_PUBLIC_CHECKIN_ENABLED=true in Vercel when iPad goes live.
+  const checkinEnabled = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CHECKIN_ENABLED === 'true';
+
   async function load(pw) {
     setLoading(true); setError('');
     try {
@@ -81,7 +85,22 @@ export default function AdminPage() {
         <div className="parish">{data.empty.length} empty hour{data.empty.length === 1 ? '' : 's'} this week</div>
       </header>
 
-      {data.currentHourLive && <CurrentHourPanel live={data.currentHourLive} onAction={patchAction} />}
+      {!checkinEnabled && (
+        <div style={{
+          background: '#fef9ee',
+          border: '1.5px solid #d4a945',
+          borderRadius: 6,
+          padding: '14px 18px',
+          margin: '16px 0 24px',
+          color: '#5e3e0a',
+          fontSize: 15,
+          lineHeight: 1.45,
+        }}>
+          <strong>Check-in is currently disabled.</strong> No-show tracking, lateness badges, and uncovered-hour alerts are paused while the iPad kiosk is not yet live at the chapel. When you're ready to go live, set <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 6px', borderRadius: 3 }}>CHECKIN_ENABLED=true</code> and <code style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 6px', borderRadius: 3 }}>NEXT_PUBLIC_CHECKIN_ENABLED=true</code> in Vercel.
+        </div>
+      )}
+
+      {data.currentHourLive && <CurrentHourPanel live={data.currentHourLive} onAction={patchAction} checkinEnabled={checkinEnabled} />}
 
       <h2 className="admin-h2">Coverage at a glance</h2>
       <div className="admin-grid" style={{ gridTemplateColumns: `110px repeat(${data.hours.length}, 1fr)` }}>
@@ -110,16 +129,16 @@ export default function AdminPage() {
             );
           }
           return list.map((s, i) => (
-            <div key={s.id} className={`admin-list-row ${s.no_show ? 'no-show-row' : ''}`}>
+            <div key={s.id} className={`admin-list-row ${checkinEnabled && s.no_show ? 'no-show-row' : ''}`}>
               <div className="when">{i === 0 ? `${formatDateLabel(date)} · ${formatHourRange(hour)}` : ''}</div>
               <div>
                 <div>
                   {s.name}
                   {s.recurring && ' ↻'}
                   {s.walk_in && ' (walk-in)'}
-                  {s.recurring_paused && <span className="paused-tag"> paused</span>}
+                  {checkinEnabled && s.recurring_paused && <span className="paused-tag"> paused</span>}
                 </div>
-                {s.noShowHistory && (s.noShowHistory.count > 0 || s.noShowHistory.lateCount > 0 || s.noShowHistory.veryLateCount > 0) && (
+                {checkinEnabled && s.noShowHistory && (s.noShowHistory.count > 0 || s.noShowHistory.lateCount > 0 || s.noShowHistory.veryLateCount > 0) && (
                   <div className="history-note">
                     {s.noShowHistory.count > 0 && <span className="hist-no-show">⚠ {s.noShowHistory.count} prior no-show{s.noShowHistory.count > 1 ? 's' : ''}</span>}
                     {(s.noShowHistory.lateCount + s.noShowHistory.veryLateCount) > 0 && (
@@ -130,9 +149,9 @@ export default function AdminPage() {
                 )}
               </div>
               <div style={{ color: 'var(--ink-secondary)', fontSize: 14 }}>
-                <div className="num" style={{ fontFamily: 'var(--font-numeric)' }}>{s.phone || ''}</div>
+                <div style={{ fontFamily: 'var(--font-numeric)' }}>{s.phone || ''}</div>
                 {s.email && <div style={{ fontSize: 13 }}>{s.email}</div>}
-                {s.checkedInAtFormatted && (
+                {checkinEnabled && s.checkedInAtFormatted && (
                   <div className="checkin-line">
                     <span className="checkin-green">✓ In {s.checkedInAtFormatted}</span>
                     {s.checkedOutAtFormatted && <span className="checkout-grey">↩ Out {s.checkedOutAtFormatted}</span>}
@@ -144,19 +163,19 @@ export default function AdminPage() {
                     )}
                   </div>
                 )}
-                {s.no_show && <div style={{ color: 'var(--red)', fontSize: 13, fontWeight: 600, marginTop: 2 }}>⚠ NO-SHOW</div>}
+                {checkinEnabled && s.no_show && <div style={{ color: 'var(--red)', fontSize: 13, fontWeight: 600, marginTop: 2 }}>⚠ NO-SHOW</div>}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {!s.checkedInAtFormatted && (
+                {checkinEnabled && !s.checkedInAtFormatted && (
                   <button className="delete-btn" onClick={() => patchAction(s.id, 'checkin')}>Mark present</button>
                 )}
-                {s.checkedInAtFormatted && !s.checkedOutAtFormatted && (
+                {checkinEnabled && s.checkedInAtFormatted && !s.checkedOutAtFormatted && (
                   <button className="delete-btn" onClick={() => patchAction(s.id, 'checkout')}>Check out</button>
                 )}
-                {s.checkedInAtFormatted && (
+                {checkinEnabled && s.checkedInAtFormatted && (
                   <button className="delete-btn" onClick={() => patchAction(s.id, 'undoCheckin')}>Undo check-in</button>
                 )}
-                {s.recurring_paused && (
+                {checkinEnabled && s.recurring_paused && (
                   <button className="delete-btn" onClick={() => patchAction(s.id, 'resumeRecurring')} style={{ borderColor: 'var(--green)', color: 'var(--green)' }}>Resume</button>
                 )}
                 <button className="delete-btn" onClick={() => handleDelete(s.id)}>Remove</button>
@@ -166,11 +185,15 @@ export default function AdminPage() {
         })}
       </div>
 
-      <h2 className="admin-h2" style={{ marginTop: 36 }}>Alert recipients</h2>
-      <p style={{ color: 'var(--ink-secondary)', fontSize: 15, margin: '0 0 12px' }}>
-        These people receive an alert if no one has checked in 5 minutes into an hour.
-      </p>
-      <CoordinatorList coordinators={data.coordinators} reload={() => load(sessionStorage.getItem('adminPw'))} />
+      {checkinEnabled && (
+        <>
+          <h2 className="admin-h2" style={{ marginTop: 36 }}>Alert recipients</h2>
+          <p style={{ color: 'var(--ink-secondary)', fontSize: 15, margin: '0 0 12px' }}>
+            These people receive an alert if no one has checked in 5 minutes into an hour.
+          </p>
+          <CoordinatorList coordinators={data.coordinators} reload={() => load(sessionStorage.getItem('adminPw'))} />
+        </>
+      )}
 
       <button className="btn" style={{ marginTop: 32, maxWidth: 200 }}
         onClick={() => { sessionStorage.removeItem('adminPw'); setAuthed(false); setData(null); setPassword(''); }}>
@@ -180,27 +203,34 @@ export default function AdminPage() {
   );
 }
 
-function CurrentHourPanel({ live, onAction }) {
+function CurrentHourPanel({ live, onAction, checkinEnabled }) {
   const present = live.activelyPresentCount;
   const total = live.scheduled.length;
-  const className = present > 0 ? 'live-panel ok' : 'live-panel warn';
+
+  // When check-in is disabled, don't use warn/ok colors based on presence — just show neutral info
+  let className, message;
+  if (!checkinEnabled) {
+    className = 'live-panel';
+    if (total === 0) message = 'No one scheduled for this hour';
+    else message = `${total} scheduled for this hour`;
+  } else {
+    className = present > 0 ? 'live-panel ok' : 'live-panel warn';
+    if (total === 0) message = '⚠ No one scheduled for this hour';
+    else if (present > 0) message = `✓ ${present} of ${total} present`;
+    else message = `⏳ Waiting for ${total} volunteer${total > 1 ? 's' : ''} to arrive`;
+  }
+
   return (
-    <div className={className}>
+    <div className={className} style={!checkinEnabled ? { background: 'var(--bg-card)', borderColor: 'var(--rule)', color: 'var(--ink-strong)' } : undefined}>
       <div className="live-label">RIGHT NOW · {formatHourRange(live.hour)}</div>
-      {total === 0 ? (
-        <div className="live-message">⚠ No one scheduled for this hour</div>
-      ) : present > 0 ? (
-        <div className="live-message">✓ {present} of {total} present</div>
-      ) : (
-        <div className="live-message">⏳ Waiting for {total} volunteer{total > 1 ? 's' : ''} to arrive</div>
-      )}
+      <div className="live-message">{message}</div>
       <div className="live-volunteers">
         {live.scheduled.map((s) => (
           <div key={s.id} className={`live-volunteer ${s.isActivelyPresent ? 'in' : 'pending'}`}>
-            <span className="lv-status">{s.isActivelyPresent ? '✓' : (s.checkedOutAt ? '↩' : '⌛')}</span>
+            {checkinEnabled && <span className="lv-status">{s.isActivelyPresent ? '✓' : (s.checkedOutAt ? '↩' : '⌛')}</span>}
             <span className="lv-name">{s.name}</span>
             <span className="lv-phone">{s.phone || ''}</span>
-            {s.checkedInAtFormatted && (
+            {checkinEnabled && s.checkedInAtFormatted && (
               <span className="lv-time">
                 in {s.checkedInAtFormatted}
                 {s.checkedOutAtFormatted && ` · out ${s.checkedOutAtFormatted}`}
