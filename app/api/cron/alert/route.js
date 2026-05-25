@@ -1,87 +1,74 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
-import { currentAdorationHour, formatHourRange } from '../../../../lib/dates';
 import { sendAlert } from '../../../../lib/alerts';
+import { currentAdorationHour, formatHourRange } from '../../../../lib/dates';
 
 export const dynamic = 'force-dynamic';
 
-function authorized(req) {
-  const auth = req.headers.get('authorization') || '';
-  const secret = process.env.CRON_SECRET;
-  if (secret && auth === `Bearer ${secret}`) return true;
-  if (req.headers.get('x-vercel-cron')) return true;
-  return false;
+function checkAuth(req) {
+  const header = req.headers.get('authorization') || '';
+  const expected = `Bearer ${process.env.CRON_SECRET || ''}`;
+  return process.env.CRON_SECRET && header === expected;
 }
 
-// Called every 15 minutes. We only act when we're in the :00–:14 window of an Adoration hour
-// AND no one has checked in yet.
 export async function GET(req) {
-  if (process.env.CRON_SECRET && !authorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Feature flag: only fire uncovered-hour alerts when check-in is actually possible.
+  // Set CHECKIN_ENABLED=true in Vercel once the iPad is deployed at the chapel.
+  if (process.env.CHECKIN_ENABLED !== 'true') {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: 'CHECKIN_ENABLED is not "true" — uncovered-hour alerts are paused.',
+    });
   }
 
   const { date, current, minute } = currentAdorationHour();
-  if (current === null) {
-    return NextResponse.json({ skipped: true, reason: 'outside adoration hours' });
-  }
-  // Only fire in the first 15 minutes of the hour (5..14 ideally, but we tolerate a wider window)
-  if (minute < 5 || minute >= 15) {
-    return NextResponse.json({ skipped: true, reason: 'outside alert window', minute });
-  }
+  if (current === null) return NextResponse.json({ ok: true, skipped: 'outside hours' });
+
+  // Only alert if we're at least 5 minutes into the hour
+  if (minute < 5) return NextResponse.json({ ok: true, skipped: 'too early' });
 
   const supabase = supabaseAdmin();
 
-  // Have we already sent an alert for this hour?
-  const { data: existing } = await supabase
+  // Dedup: have we already alerted for this hour today?
+  const alertKey = `${date}-${current}`;
+  const { data: existingAlert } = await supabase
     .from('alerts_sent')
     .select('id')
-    .eq('slot_date', date)
-    .eq('slot_hour', current)
-    .eq('alert_type', 'uncovered_hour')
+    .eq('alert_key', alertKey)
     .maybeSingle();
-  if (existing) {
-    return NextResponse.json({ skipped: true, reason: 'already alerted for this hour' });
-  }
+  if (existingAlert) return NextResponse.json({ ok: true, skipped: 'already alerted' });
 
-  // Anyone checked in for current hour?
-  const { count: checkedIn } = await supabase
+  // Check if anyone is actively present for the current hour
+  const { data: signups } = await supabase
     .from('signups')
-    .select('id', { count: 'exact', head: true })
-    .eq('slot_date', date)
-    .eq('slot_hour', current)
-    .not('checked_in_at', 'is', null);
-  if ((checkedIn ?? 0) > 0) {
-    return NextResponse.json({ ok: true, sent: 0, reason: 'someone is checked in' });
-  }
-
-  // Who was supposed to be there?
-  const { data: scheduled } = await supabase
-    .from('signups')
-    .select('name, phone')
+    .select('id, checked_in_at, checked_out_at')
     .eq('slot_date', date)
     .eq('slot_hour', current);
 
-  const scheduledList = (scheduled || [])
-    .map((s) => `${s.name}${s.phone ? ` (${s.phone})` : ''}`)
-    .join(', ');
+  const activelyPresent = (signups || []).filter((s) => s.checked_in_at && !s.checked_out_at).length;
+  if (activelyPresent > 0) return NextResponse.json({ ok: true, skipped: 'hour covered' });
 
-  // Coordinators
+  // Hour is uncovered — alert coordinators
   const { data: coordinators } = await supabase
     .from('coordinators')
-    .select('id, name, phone, email')
+    .select('name, phone, email')
     .eq('active', true);
 
-  const subject = `St. Henry: ${formatHourRange(current)} chapel uncovered`;
-  const message = scheduledList
-    ? `St. Henry chapel: no one has checked in for ${formatHourRange(current)}. Scheduled: ${scheduledList}.`
-    : `St. Henry chapel: no one has checked in for ${formatHourRange(current)}, and no one was scheduled. The Blessed Sacrament is currently unattended.`;
+  let sent = 0;
+  for (const c of coordinators || []) {
+    await sendAlert({
+      to: { email: c.email, phone: c.phone },
+      subject: 'Adoration chapel uncovered',
+      message: `The chapel is uncovered for the ${formatHourRange(current)} hour. No one has checked in. Please find a substitute.`,
+    });
+    sent++;
+  }
 
-  const result = await sendAlert({ subject, message, coordinators: coordinators || [] });
+  // Record alert so we don't re-fire this hour
+  await supabase.from('alerts_sent').insert({ alert_key: alertKey });
 
-  // Record that we sent the alert (so we don't send again this hour)
-  await supabase.from('alerts_sent').insert({
-    slot_date: date, slot_hour: current, alert_type: 'uncovered_hour',
-  });
-
-  return NextResponse.json({ ok: true, ...result, hour: current });
+  return NextResponse.json({ ok: true, alerted: sent });
 }
