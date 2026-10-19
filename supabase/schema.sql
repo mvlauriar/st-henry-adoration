@@ -1,4 +1,6 @@
 -- St. Henry Adoration — database setup
+-- Fresh install: run this file, then every file in supabase/migrations/ in date order.
+-- (Existing installs: run only the migrations.)
 -- Paste this entire file into Supabase: SQL Editor → New Query → Run
 
 create table if not exists signups (
@@ -11,6 +13,11 @@ create table if not exists signups (
   recurring boolean default false,
   recurring_group_id uuid,
   reminder_sent boolean default false,
+  checked_in_at timestamptz,
+  checked_out_at timestamptz,
+  walk_in boolean not null default false,
+  no_show boolean not null default false,
+  recurring_paused boolean not null default false,
   created_at timestamptz default now()
 );
 

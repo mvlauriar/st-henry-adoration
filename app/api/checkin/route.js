@@ -1,122 +1,56 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabase';
-import {
-  currentAdorationHour,
-  WALK_IN_UNLOCK_MINUTES,
-  abbreviateName,
-  SLOTS_PER_HOUR,
-} from '../../../lib/dates';
+import { getActivePublic, getDirectory, checkIn, checkOut, IS_MOCK, resetMock } from '../../../lib/kioskStore';
+import { nowInParish, formatDateLabelFull, formatTimestamp } from '../../../lib/dates';
 
 export const dynamic = 'force-dynamic';
 
-// GET — return current state for the iPad (NO phone numbers, NO exact timestamps in public response)
-export async function GET() {
-  const { date, current, next, minute } = currentAdorationHour();
-
-  if (current === null) {
-    return NextResponse.json({
-      outsideHours: true,
-      date,
-      message: 'The chapel is outside Adoration hours (8 AM – 8 PM).',
+// Kiosk API (server-side only). Responses never include phone numbers or emails.
+// GET                 -> { now, active: [{ id, displayName, since }] }
+// GET ?directory=1    -> { directory: [{ key, displayName, search, scheduledNow, hint? }] }
+// POST { action:'checkin', key | manualName | inquiryId }
+// POST { action:'checkout', id }
+export async function GET(req) {
+  try {
+    const url = new URL(req.url);
+    if (url.searchParams.get('directory')) {
+      return json({ ok: true, directory: await getDirectory() });
+    }
+    const { date } = nowInParish();
+    return json({
+      ok: true,
+      now: { date, dateLabel: formatDateLabelFull(date), time: formatTimestamp(new Date().toISOString()) },
+      active: await getActivePublic(),
     });
+  } catch (e) {
+    console.error('kiosk GET failed', e);
+    return json({ ok: false, error: 'server_error' }, 500);
   }
-
-  const supabase = supabaseAdmin();
-  const hoursToFetch = next ? [current, next] : [current];
-
-  const { data: signups, error } = await supabase
-    .from('signups')
-    .select('id, slot_date, slot_hour, name, checked_in_at, checked_out_at')
-    .eq('slot_date', date)
-    .in('slot_hour', hoursToFetch)
-    .order('name', { ascending: true });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const currentList = (signups || []).filter((s) => s.slot_hour === current);
-  const nextList = (signups || []).filter((s) => s.slot_hour === next);
-
-  // Someone is "actively here" if they're checked in AND not checked out
-  const activelyPresent = currentList.filter((s) => s.checked_in_at && !s.checked_out_at).length;
-  const isUncovered = activelyPresent === 0;
-
-  // Substitute prompt unlocks if uncovered AND we're past the unlock minute threshold
-  const substituteUnlocked = isUncovered && minute >= WALK_IN_UNLOCK_MINUTES;
-
-  function publicTile(s) {
-    return {
-      id: s.id,
-      displayName: abbreviateName(s.name),
-      // No phone, no checked_in_at timestamp, no exact times shown publicly
-      isCheckedIn: !!s.checked_in_at && !s.checked_out_at,
-      hasCheckedOut: !!s.checked_out_at,
-    };
-  }
-
-  return NextResponse.json({
-    outsideHours: false,
-    date,
-    currentHour: current,
-    nextHour: next,
-    minute,
-    isUncovered,
-    substituteUnlocked,
-    walkInUnlockMinutes: WALK_IN_UNLOCK_MINUTES,
-    currentHourSignups: currentList.map(publicTile),
-    nextHourSignups: nextList.map(publicTile),
-    hourIsCovered: !isUncovered,
-  });
 }
 
-// POST — check in or check out
 export async function POST(req) {
   let body;
-  try { body = await req.json(); } catch { return bad('Invalid request.'); }
-
-  const { date, current, next } = currentAdorationHour();
-  if (current === null) return bad('The chapel is outside Adoration hours.');
-
-  const supabase = supabaseAdmin();
-
-  if (!body.signupId) return bad('Missing signup id.');
-
-  // Verify slot
-  const { data: existing, error: fetchErr } = await supabase
-    .from('signups')
-    .select('id, slot_date, slot_hour, checked_in_at, checked_out_at')
-    .eq('id', body.signupId)
-    .single();
-  if (fetchErr || !existing) return bad('Signup not found.');
-  if (existing.slot_date !== date) return bad('Cannot check in for a different day.');
-  if (existing.slot_hour !== current && existing.slot_hour !== next) {
-    return bad('Cannot check in for that hour.');
+  try { body = await req.json(); } catch { return json({ ok: false, error: 'bad_request' }, 400); }
+  try {
+    if (body.action === 'mockReset' && IS_MOCK) { resetMock(); return json({ ok: true }); }
+    if (body.action === 'checkout') {
+      if (!body.id) return json({ ok: false, error: 'bad_request' }, 400);
+      const r = await checkOut(String(body.id));
+      return json(r.error ? { ok: false, ...r } : r, r.error ? 404 : 200);
+    }
+    if (body.action === 'checkin') {
+      const target = body.key ? { key: String(body.key) }
+        : body.inquiryId ? { inquiryId: String(body.inquiryId) }
+        : { manualName: body.manualName };
+      const r = await checkIn(target);
+      return json(r.error ? { ok: false, ...r } : r, r.error ? 400 : 200);
+    }
+    return json({ ok: false, error: 'bad_request' }, 400);
+  } catch (e) {
+    console.error('kiosk POST failed', e);
+    return json({ ok: false, error: 'server_error' }, 500);
   }
-
-  const action = body.action || 'checkin';
-
-  if (action === 'checkout') {
-    if (!existing.checked_in_at) return bad('Cannot check out before checking in.');
-    if (existing.checked_out_at) return NextResponse.json({ ok: true, alreadyCheckedOut: true });
-    const { error: updErr } = await supabase
-      .from('signups')
-      .update({ checked_out_at: new Date().toISOString() })
-      .eq('id', body.signupId);
-    if (updErr) return fail(updErr.message);
-    return NextResponse.json({ ok: true });
-  }
-
-  // Default: check-in. If they previously checked out, re-checking in clears the checkout.
-  if (existing.checked_in_at && !existing.checked_out_at) {
-    return NextResponse.json({ ok: true, alreadyCheckedIn: true });
-  }
-  const update = existing.checked_in_at
-    ? { checked_out_at: null } // re-check-in: clear the previous checkout
-    : { checked_in_at: new Date().toISOString() };
-
-  const { error: updErr } = await supabase.from('signups').update(update).eq('id', body.signupId);
-  if (updErr) return fail(updErr.message);
-  return NextResponse.json({ ok: true });
 }
 
-function bad(msg) { return NextResponse.json({ error: msg }, { status: 400 }); }
-function fail(msg) { return NextResponse.json({ error: msg }, { status: 500 }); }
+function json(data, status = 200) {
+  return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+}

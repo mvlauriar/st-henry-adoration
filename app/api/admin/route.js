@@ -8,6 +8,7 @@ import {
   formatTimestamp,
   computeLateness,
 } from '../../../lib/dates';
+import { adminAttendance, correctAttendance, setInquiryStatus, logAudit, checkOut, IS_MOCK } from '../../../lib/kioskStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,14 @@ function checkAuth(req) {
 
 export async function POST(req) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Kiosk-era attendance, inquiries and audit (works against the mock too).
+  let kiosk;
+  try { kiosk = await adminAttendance(); } catch (e) { kiosk = { error: e.message }; }
+  if (IS_MOCK) {
+    const dates = upcomingDates(7);
+    const grid = {}; for (const d of dates) { grid[d] = {}; for (const h of HOURS) grid[d][h] = 0; }
+    return NextResponse.json({ ok: true, dates, hours: HOURS, slotsPerHour: SLOTS_PER_HOUR, grid, signups: [], empty: [], currentHourLive: null, coordinators: [], kiosk });
+  }
 
   const dates = upcomingDates(7);
   const supabase = supabaseAdmin();
@@ -115,6 +124,7 @@ export async function POST(req) {
     empty,
     currentHourLive,
     coordinators: coordinators || [],
+    kiosk,
   });
 }
 
@@ -182,9 +192,29 @@ export async function PUT(req) {
 
 export async function PATCH(req) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { coordinatorId, action } = await req.json();
+  const body = await req.json();
+  const { coordinatorId, action } = body;
+  if (action === 'inquiryStatus') {
+    const r = await setInquiryStatus(body.id, body.status);
+    return NextResponse.json(r, { status: r.error ? 400 : 200 });
+  }
+  if (action === 'correction') {
+    // Manual attendance correction, e.g. forgotten checkout. Always audited.
+    const fields = {};
+    if ('checked_in_at' in body) fields.checked_in_at = body.checked_in_at;
+    if ('checked_out_at' in body) fields.checked_out_at = body.checked_out_at;
+    const r = await correctAttendance(body.id, fields, body.note);
+    return NextResponse.json(r, { status: r.error ? 400 : 200 });
+  }
+  if (action === 'checkoutNow') {
+    const r = await checkOut(body.id, { source: 'admin', note: body.note || 'admin checkout' });
+    return NextResponse.json(r, { status: r.error ? 400 : 200 });
+  }
   if (!coordinatorId) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   const supabase = supabaseAdmin();
+  if (['checkin', 'checkout', 'undoCheckin'].includes(action)) {
+    await logAudit({ signup_id: coordinatorId, action: `admin_${action}`, source: 'admin', new_value: new Date().toISOString() });
+  }
   if (action === 'remove') {
     await supabase.from('coordinators').delete().eq('id', coordinatorId);
   } else if (action === 'toggle') {

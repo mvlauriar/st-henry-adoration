@@ -85,6 +85,8 @@ export default function AdminPage() {
         <div className="parish">{data.empty.length} empty hour{data.empty.length === 1 ? '' : 's'} this week</div>
       </header>
 
+      {data.kiosk && <KioskAdmin k={data.kiosk} reload={() => load(sessionStorage.getItem('adminPw'))} />}
+
       {!checkinEnabled && (
         <div style={{
           background: '#fef9ee',
@@ -393,5 +395,110 @@ function Legend({ color, textColor, label }) {
       <span style={{ width: 14, height: 14, background: color, border: '1px solid var(--rule)', display: 'inline-block' }} />
       <span style={{ color: textColor }}>{label}</span>
     </span>
+  );
+}
+
+// ---------------- Kiosk V2: attendance, corrections, inquiries, audit ----------------
+async function adminPatch(body) {
+  const pw = sessionStorage.getItem('adminPw');
+  const res = await fetch('/api/admin', { method: 'PATCH', headers: { 'x-admin-password': pw, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); alert('Could not save: ' + (d.error || res.status)); return false; }
+  return true;
+}
+const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+function KioskAdmin({ k, reload }) {
+  if (k.error) return <div className="live-panel warn"><div className="live-message">Attendance data unavailable: {k.error}</div></div>;
+  const covered = k.active.length > 0;
+  return (
+    <section data-testid="kiosk-admin">
+      <div className={`live-panel ${covered ? 'ok' : 'warn'}`} data-testid="coverage-status">
+        <div className="live-label">CHAPEL COVERAGE · RIGHT NOW</div>
+        <div className="live-message">
+          {covered ? `✓ ${k.active.length} checked in on the iPad` : '⚠ Unattended / unconfirmed coverage — nobody is checked in'}
+        </div>
+        {!covered && <div style={{ fontSize: 14 }}>A blank list means nobody has confirmed presence on the iPad; the chapel may or may not be empty.</div>}
+      </div>
+
+      <h2 className="admin-h2">Checked in now</h2>
+      <div className="admin-list">
+        {k.active.length === 0 && <div className="admin-list-row"><em>Nobody checked in.</em></div>}
+        {k.active.map((a) => <AttendanceRow key={a.id} a={a} reload={reload} long={a.longFlag} longHours={k.longHours} />)}
+      </div>
+
+      <h2 className="admin-h2">New Volunteer Inquiries</h2>
+      {k.inquiries === null ? <div className="admin-list-row"><em>Inquiries table not found — run supabase/migrations/2026-10-19-kiosk-v2.sql.</em></div> : (
+        <div className="admin-list" data-testid="inquiries">
+          {k.inquiries.length === 0 && <div className="admin-list-row"><em>No inquiries yet.</em></div>}
+          {k.inquiries.map((i) => (
+            <div key={i.id} className="admin-list-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+              <strong>{i.full_name}</strong>
+              <span>{i.phone}</span>
+              <span>{new Date(i.created_at).toLocaleString()}</span>
+              <span>{i.consent ? 'Consented to contact' : 'NO consent to contact'}</span>
+              <span>Status: <b>{i.status}</b></span>
+              {i.status !== 'contacted' && <button className="btn" style={{ maxWidth: 150 }} onClick={async () => { if (await adminPatch({ action: 'inquiryStatus', id: i.id, status: 'contacted' })) reload(); }}>Mark contacted</button>}
+              {i.status !== 'resolved' && <button className="btn" style={{ maxWidth: 150 }} onClick={async () => { if (await adminPatch({ action: 'inquiryStatus', id: i.id, status: 'resolved' })) reload(); }}>Mark resolved</button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h2 className="admin-h2">Attendance history (last 7 days)</h2>
+      <div className="admin-list">
+        {k.history.length === 0 && <div className="admin-list-row"><em>No completed visits yet.</em></div>}
+        {k.history.map((a) => <AttendanceRow key={a.id} a={a} reload={reload} />)}
+      </div>
+
+      <details style={{ margin: '16px 0 32px' }}>
+        <summary className="admin-h2" style={{ cursor: 'pointer' }}>Audit trail</summary>
+        {k.audit === null ? <em>Audit table not found — run the kiosk-v2 migration.</em> : (
+          <div className="admin-list">
+            {k.audit.map((x) => (
+              <div key={x.id} className="admin-list-row" style={{ fontSize: 13 }}>
+                {new Date(x.created_at).toLocaleString()} · {x.source} · {x.action} {x.note ? `· ${x.note}` : ''} {x.old_value ? `· was ${x.old_value}` : ''} {x.new_value ? `· now ${x.new_value}` : ''}
+              </div>
+            ))}
+          </div>
+        )}
+      </details>
+    </section>
+  );
+}
+
+function AttendanceRow({ a, reload, long, longHours }) {
+  const [edit, setEdit] = useState(false);
+  const [inV, setInV] = useState(toLocalInput(a.checkedInAt));
+  const [outV, setOutV] = useState(toLocalInput(a.checkedOutAt));
+  const [note, setNote] = useState('');
+  return (
+    <div className="admin-list-row" style={{ display: 'block', background: long ? 'var(--amber-bg)' : undefined }} data-testid={long ? 'long-flag' : undefined}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+        <strong>{a.name}</strong>{a.walkIn && <span>(walk-in)</span>}
+        <span>{a.phone || ''}</span>
+        <span>In {a.inLabel}{a.outLabel ? ` · Out ${a.outLabel}` : ' · still here'}</span>
+        <span>{a.hours} h</span>
+        {long && <b style={{ color: 'var(--red)' }}>⚑ Over {longHours} h — review (forgotten checkout?)</b>}
+        {!a.checkedOutAt && <button className="btn" style={{ maxWidth: 160 }} onClick={async () => { if (confirm(`Check out ${a.name} now?`) && await adminPatch({ action: 'checkoutNow', id: a.id })) reload(); }}>Check out now</button>}
+        <button className="btn" style={{ maxWidth: 120 }} onClick={() => setEdit(!edit)}>{edit ? 'Close' : 'Correct'}</button>
+      </div>
+      {edit && (
+        <form style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 10, alignItems: 'flex-end' }} onSubmit={async (e) => {
+          e.preventDefault();
+          if (!note.trim()) { alert('Please add a reason for the audit trail.'); return; }
+          const body = { action: 'correction', id: a.id, note: note.trim(), checked_in_at: inV ? new Date(inV).toISOString() : null, checked_out_at: outV ? new Date(outV).toISOString() : null };
+          if (await adminPatch(body)) { setEdit(false); reload(); }
+        }}>
+          <label>Arrived<br /><input type="datetime-local" value={inV} onChange={(e) => setInV(e.target.value)} /></label>
+          <label>Left<br /><input type="datetime-local" value={outV} onChange={(e) => setOutV(e.target.value)} /></label>
+          <label>Reason (required)<br /><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. forgot to check out" /></label>
+          <button className="btn btn-primary" style={{ maxWidth: 160 }}>Save correction</button>
+        </form>
+      )}
+    </div>
   );
 }

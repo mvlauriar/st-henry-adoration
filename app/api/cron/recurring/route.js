@@ -26,7 +26,7 @@ export async function GET(req) {
   const today = upcomingDates(1)[0];
   const { data: recurring, error } = await supabase
     .from('signups')
-    .select('id, name, phone, email, slot_date, slot_hour, recurring_group_id')
+    .select('id, name, phone, email, slot_date, slot_hour, recurring_group_id, recurring_paused')
     .eq('recurring', true)
     .not('recurring_group_id', 'is', null);
 
@@ -41,6 +41,8 @@ export async function GET(req) {
 
   let extended = 0;
   for (const [, rows] of Object.entries(groups)) {
+    // A no-show pauses the whole chain (cron/noshow); don't keep extending it.
+    if (rows.some((r) => r.recurring_paused)) continue;
     // Most recent signup in this recurring group
     const latest = rows.reduce((a, b) => (a.slot_date > b.slot_date ? a : b));
     // Only extend if the latest one is within 7 days from today (otherwise the user

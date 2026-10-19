@@ -70,7 +70,7 @@ You'll need a free GitHub account to deploy. If you don't have one, sign up at h
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role key from Supabase |
    | `RESEND_API_KEY` | API key from Resend |
    | `FROM_EMAIL` | `St. Henry Adoration <onboarding@resend.dev>` |
-   | `ADMIN_PASSWORD` | Pick something strong. Default placeholder: `StHenry2026!` |
+   | `ADMIN_PASSWORD` | Pick something strong and unique (never commit it to this repo) |
    | `CRON_SECRET` | Generate any random string (e.g. type 30 random characters) |
    | `PARISH_TIMEZONE` | `America/New_York` (Hollywood, FL is Eastern Time) |
 
@@ -139,3 +139,12 @@ Free, with these limits:
 - **Vercel free tier:** unlimited hosting for personal projects. Cron jobs included.
 
 If volume exceeds free tiers (very unlikely), upgrades start at $5-20/month per service.
+
+## Chapel iPad kiosk (V2)
+
+- Kiosk URL: `/checkin` — three actions (Check In / Check Out / New Here?), English and Spanish side by side (stacked in portrait).
+- Check-ins reuse the `signups` table: a scheduled row is checked in if the person is booked for this/next hour; otherwise a `walk_in` row is created. A check-in stays open until the person checks out (no auto-checkout).
+- New Here? submissions go to `volunteer_inquiries`; every kiosk/admin attendance change is logged in `attendance_audit`.
+- **Before using:** run `supabase/migrations/2026-10-19-kiosk-v2.sql` in Supabase → SQL Editor.
+- Optional env: `LONG_CHECKIN_HOURS` (default 4) — admin flags active check-ins longer than this.
+- Local test mode: `KIOSK_MOCK=1 npm run dev` uses an in-memory data store (refused on Vercel).
