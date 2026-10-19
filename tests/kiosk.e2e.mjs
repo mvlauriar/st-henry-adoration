@@ -14,15 +14,32 @@ for (const [label, vp] of [['portrait', { width: 820, height: 1180 }], ['landsca
   const shot = (n) => page.screenshot({ path: `${SHOTS}/${label}-${n}.png` });
   await page.goto(BASE + '/checkin');
   await api(page, { action: 'mockReset' });
-  await page.reload(); await page.waitForSelector('[data-testid=count-en]');
+  await page.reload(); await page.waitForSelector('[data-testid=kiosk-clock]');
 
   // Home: exactly 3 actions per language, both languages visible, no substitute card
   check(`${label}: 3 EN + 3 ES home buttons`, (await page.locator('.k-en .k-btn').count()) === 3 && (await page.locator('.k-es .k-btn').count()) === 3);
-  check(`${label}: no substitute text on kiosk`, !(await page.content()).toLowerCase().includes('substitute'));
+  check(`${label}: no substitute card on kiosk`, (await page.locator('.ci-substitute-card, .ci-substitute-section').count()) === 0);
   const minH = await page.$$eval('.k-btn', (els) => Math.min(...els.map((e) => e.getBoundingClientRect().height)));
   check(`${label}: home touch targets >= 88px (min ${Math.round(minH)})`, minH >= 88);
   const enBox = await page.locator('.k-en').boundingBox(), esBox = await page.locator('.k-es').boundingBox();
   check(`${label}: layout ${label === 'landscape' ? 'side-by-side' : 'stacked'}`, label === 'landscape' ? esBox.x > enBox.x + 100 : esBox.y > enBox.y + 100);
+  await page.waitForFunction(() => /\d/.test(document.querySelector('[data-testid=kiosk-clock]').innerText));
+  const homeText = await page.evaluate(() => document.body.innerText);
+  check(`${label}: one shared "St. Henry" title above both sections`, (homeText.match(/St\. Henry/g) || []).length === 1 && (await page.locator('.k-header').boundingBox()).y < enBox.y);
+  check(`${label}: no per-language chapel names`, !/Adoration Chapel|Capilla de Adoración San Enrique/.test(homeText));
+  const clockTxt = await page.locator('[data-testid=kiosk-clock]').innerText();
+  const nyNow = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date());
+  check(`${label}: big shared clock in parish time (${clockTxt})`, /^\d{1,2}:\d{2} (AM|PM)$/.test(clockTxt) && clockTxt === nyNow);
+  const clockPx = await page.locator('[data-testid=kiosk-clock]').evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  check(`${label}: clock font >= 56px (${clockPx})`, clockPx >= 56);
+  check(`${label}: no attendance count on kiosk home`, !/checked in|registrad/i.test(homeText));
+  const helpEn = await page.locator('[data-testid=help-en]').innerText(), helpEs = await page.locator('[data-testid=help-es]').innerText();
+  check(`${label}: EN help line + phone inside EN section`, helpEn.startsWith('Problem or need a substitute? Call the parish office') && helpEn.includes('(954) 785-2450') && (await page.locator('.k-en [data-testid=help-en]').count()) === 1);
+  check(`${label}: ES help line + phone inside ES section`, helpEs.startsWith('¿Algún problema o necesita un sustituto? Llame a la oficina parroquial') && helpEs.includes('(954) 785-2450') && (await page.locator('.k-es [data-testid=help-es]').count()) === 1);
+  const helpPx = await page.locator('[data-testid=help-en]').evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  check(`${label}: help line readable (>= 18px, ${helpPx})`, helpPx >= 18);
+  const vh = await page.evaluate(() => [document.documentElement.scrollHeight, innerHeight]);
+  check(`${label}: home fits without scrolling`, vh[0] <= vh[1]);
   await shot('01-home');
 
   // EN check-in, duplicate names disambiguated
@@ -32,7 +49,7 @@ for (const [label, vp] of [['portrait', { width: 820, height: 1180 }], ['landsca
   const opts = await page.locator('[data-testid=name-option]').allInnerTexts();
   check(`${label}: duplicate "Maria L." shown with distinguishing hints`, opts.filter((o) => o.startsWith('Maria L')).length === 3 && new Set(opts).size === opts.length);
   const html = await page.content();
-  check(`${label}: no phone numbers in kiosk DOM`, !/954555\d{4}/.test(html) && !(await page.evaluate(() => document.body.innerText)).match(/\d{3}\D?\d{3}\D?\d{4}/));
+  check(`${label}: no volunteer phone numbers in kiosk DOM`, !/954555\d{4}|555-01\d\d/.test(html) && !(await page.evaluate(() => document.body.innerText)).replace('(954) 785-2450', '').match(/\d{3}\D?\d{3}\D?\d{4}/));
   await shot('02-en-search-duplicates');
   await page.locator('[data-testid=name-option]').first().click();
   await page.waitForSelector('[data-testid=done-screen]');
@@ -71,8 +88,8 @@ for (const [label, vp] of [['portrait', { width: 820, height: 1180 }], ['landsca
   check(`${label}: kiosk API returns no phone/email fields`, !JSON.stringify(st).match(/phone|email|954555/));
 
   // Refresh persistence
-  await page.reload(); await page.waitForSelector('[data-testid=count-en]');
-  check(`${label}: after refresh home shows 3 checked in`, (await page.locator('[data-testid=count-en]').innerText()).startsWith('3'));
+  await page.reload(); await page.waitForSelector('[data-testid=kiosk-clock]');
+  check(`${label}: after refresh server still has 3 checked in`, (await api(page)).active.length === 3);
   await shot('06-home-after-refresh');
 
   // ES checkout of one person only

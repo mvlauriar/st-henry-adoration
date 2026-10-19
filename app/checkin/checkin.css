@@ -1,7 +1,13 @@
 /* Chapel kiosk — calm, warm, large. EN = ivory, ES = pale sage. */
 :root { --k-en: #fbf6ea; --k-es: #e9efe6; --k-en-edge: #e4d8bd; --k-es-edge: #c9d6c4; --k-ink: #1f1a12; --k-accent: #5a1818; }
-body:has(.k-home), body:has(.k-flow) { background: #f4efe3; overscroll-behavior: none; }
-.k-home { min-height: 100vh; display: grid; gap: 18px; padding: 18px; grid-template-columns: 1fr 1fr; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+body:has(.k-home-wrap), body:has(.k-flow) { background: #f4efe3; overscroll-behavior: none; }
+.k-home-wrap { min-height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+.k-header { text-align: center; padding: 18px 18px 0; }
+.k-title-shared { font-family: var(--font-display); font-size: 40px; font-weight: 600; color: var(--k-accent); line-height: 1.1; }
+.k-clock { font-family: var(--font-numeric); font-size: 64px; font-weight: 600; line-height: 1.1; color: var(--k-ink); font-variant-numeric: tabular-nums; }
+.k-help { margin: 0; font-size: 19px; line-height: 1.4; color: #4a4232; text-align: center; }
+.k-phone { white-space: nowrap; font-weight: 600; color: var(--k-ink); }
+.k-home { flex: 1; display: grid; gap: 18px; padding: 18px; grid-template-columns: 1fr 1fr; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
 @media (orientation: portrait) { .k-home { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
 .k-panel { border-radius: 18px; padding: 26px 30px; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; border: 1.5px solid; }
 .k-en { background: var(--k-en); border-color: var(--k-en-edge); }

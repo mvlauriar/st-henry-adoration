@@ -26,6 +26,7 @@ const T = {
     serverErr: 'Something went wrong. Nothing was saved. Please try again.',
     tryAgain: 'Try Again',
     offline: 'Connection problem — trying again…',
+    help: 'Problem or need a substitute? Call the parish office:',
   },
   es: {
     lang: 'Español', other: 'English', home: '← Inicio',
@@ -49,8 +50,20 @@ const T = {
     serverErr: 'Algo salió mal. No se guardó nada. Por favor intente de nuevo.',
     tryAgain: 'Intentar de nuevo',
     offline: 'Problema de conexión — reintentando…',
+    help: '¿Algún problema o necesita un sustituto? Llame a la oficina parroquial:',
   },
 };
+
+const PARISH_PHONE = '(954) 785-2450';
+const PARISH_TZ = 'America/New_York';
+
+// Shared, untranslated clock in parish time; ticks on the device, no network needed.
+function Clock() {
+  const [now, setNow] = useState(null);
+  useEffect(() => { setNow(new Date()); const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
+  const label = now ? new Intl.DateTimeFormat('en-US', { timeZone: PARISH_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(now) : '\u00a0';
+  return <div className="k-clock" data-testid="kiosk-clock" suppressHydrationWarning>{label}</div>;
+}
 
 const IDLE_MS = 60000;      // any flow screen returns home after 60s without a touch
 const DONE_MS = 6000;       // confirmation screens return home after 6s
@@ -116,27 +129,26 @@ export default function KioskPage() {
   const fail = (prev) => (e) => setScreen({ name: 'error', e, retry: () => setScreen({ name: prev === 'newHereThanks' ? 'newHere' : prev }) });
   const start = (name, l) => { setLang(l); setScreen({ name }); };
   const t = T[lang];
-  const n = status?.active?.length ?? null;
 
   if (screen.name === 'home') {
     return (
-      <div className="k-home">
-        {['en', 'es'].map((l) => (
-          <section key={l} className={`k-panel k-${l}`} lang={l} aria-label={T[l].lang}>
-            <div className="k-panel-head">
-              <div className="k-chapel">✦ {T[l].chapel}</div>
-              <div className="k-meta">
-                {status?.now?.time && <span className="k-time">{status.now.time}</span>}
-                {n !== null && <span className="k-count" data-testid={`count-${l}`}>{T[l].present(n)}</span>}
+      <div className="k-home-wrap">
+        <header className="k-header">
+          <div className="k-title-shared">St. Henry</div>
+          <Clock />
+        </header>
+        <div className="k-home">
+          {['en', 'es'].map((l) => (
+            <section key={l} className={`k-panel k-${l}`} lang={l} aria-label={T[l].lang}>
+              <div className="k-actions">
+                <button className="k-btn k-primary" data-testid={`home-checkin-${l}`} onClick={() => start('checkin', l)}>{T[l].checkIn}</button>
+                <button className="k-btn" data-testid={`home-checkout-${l}`} onClick={() => start('checkout', l)}>{T[l].checkOut}</button>
+                <button className="k-btn k-quiet" data-testid={`home-new-${l}`} onClick={() => start('newHere', l)}>{T[l].newHere}</button>
               </div>
-            </div>
-            <div className="k-actions">
-              <button className="k-btn k-primary" data-testid={`home-checkin-${l}`} onClick={() => start('checkin', l)}>{T[l].checkIn}</button>
-              <button className="k-btn" data-testid={`home-checkout-${l}`} onClick={() => start('checkout', l)}>{T[l].checkOut}</button>
-              <button className="k-btn k-quiet" data-testid={`home-new-${l}`} onClick={() => start('newHere', l)}>{T[l].newHere}</button>
-            </div>
-          </section>
-        ))}
+              <p className="k-help" data-testid={`help-${l}`}>{T[l].help} <span className="k-phone">{PARISH_PHONE}</span></p>
+            </section>
+          ))}
+        </div>
         {offline && <div className="k-offline" role="status">{T.en.offline} · {T.es.offline}</div>}
       </div>
     );
