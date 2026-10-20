@@ -38,3 +38,22 @@ await t('idempotent: second run closes nothing', async () => {
   assert.equal(r.closed, 0);
 });
 console.log(`\n${n}/${n} passed`);
+
+// Re-check-in: staying longer = check in again -> fresh check-in, never blocked as duplicate
+await post('/api/checkin', { action: 'mockReset' });
+const first = await post('/api/checkin', { action: 'checkin', manualName: 'Long Stayer' });
+await t('re-check-in while still active creates a fresh check-in (old one closed)', async () => {
+  const again = await post('/api/checkin', { action: 'checkin', manualName: 'Long Stayer' });
+  assert.equal(again.ok, true); assert.ok(!again.already); assert.equal(again.renewed, true);
+  assert.notEqual(again.id, first.id);
+  const ids = (await active()).map((a) => a.id);
+  assert.deepEqual(ids, [again.id]);
+});
+await t('re-check-in after previous check-in expired (auto-closed) creates a fresh one', async () => {
+  await cron(encodeURIComponent(new Date(Date.now() + 864e5).toISOString()));
+  assert.equal((await active()).length, 0);
+  const third = await post('/api/checkin', { action: 'checkin', manualName: 'Long Stayer' });
+  assert.equal(third.ok, true); assert.ok(!third.already); assert.equal(third.renewed, false);
+  assert.deepEqual((await active()).map((a) => a.id), [third.id]);
+});
+console.log(`\n${n}/${n} passed (incl. re-check-in)`);

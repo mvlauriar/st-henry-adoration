@@ -57,12 +57,12 @@ for (const [label, vp] of [['portrait', { width: 820, height: 1180 }], ['landsca
   await shot('03-en-checked-in');
   await page.getByRole('button', { name: 'Done', exact: true }).click();
 
-  // Same person again -> no duplicate active record
+  // Same person again -> fresh check-in (renewal), still only one active record
   await page.click('[data-testid=home-checkin-en]');
   await page.fill('[data-testid=search]', 'mar');
   await page.locator('[data-testid=name-option]').first().click();
   await page.waitForSelector('[data-testid=done-screen]');
-  check(`${label}: repeat check-in reports already checked in`, (await page.locator('.k-title').innerText()).includes('already'));
+  check(`${label}: repeat check-in creates a fresh check-in`, (await page.locator('.k-title').innerText()).includes("You're checked in!"));
   await page.getByRole('button', { name: 'Done', exact: true }).click();
 
   // ES: unscheduled manual entry + overlapping check-ins
