@@ -177,7 +177,9 @@ for (const [label, vp] of [['portrait', { width: 820, height: 1180 }], ['landsca
   const r2 = await api(page, { action: 'checkin', manualName: 'Long Stay Test' });
   await page.evaluate(async ([id]) => fetch('/api/admin', { method: 'PATCH', headers: { 'x-admin-password': 'testpw', 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'correction', id, note: 'test backdate', checked_in_at: new Date(Date.now() - 5 * 36e5).toISOString() }) }), [r2.id]);
   await page.reload(); await page.waitForSelector('[data-testid=kiosk-admin]');
-  check('admin: >4h active check-in flagged', (await page.locator('[data-testid=long-flag]').count()) === 1);
+  // With the 1-hour shift (SHIFT_MINUTES, default 60) a 5h-old check-in has expired: shown checked out "(auto)", not active.
+  if (Number(process.env.SHIFT_MINUTES || 60) > 300) check('admin: >4h active check-in flagged', (await page.locator('[data-testid=long-flag]').count()) === 1);
+  else check('admin: 5h-old check-in auto-expired (not active, shown as auto check-out)', (await page.locator('[data-testid=long-flag]').count()) === 0 && (await page.locator('[data-testid=kiosk-admin]').innerText()).includes('(auto)'));
   await page.locator('details summary').click();
   check('admin: correction recorded in audit trail', (await page.locator('[data-testid=kiosk-admin]').innerText()).includes('correction'));
   await page.screenshot({ path: `${SHOTS}/admin-long-checkin-flag-audit.png`, fullPage: true });

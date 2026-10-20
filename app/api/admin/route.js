@@ -1,3 +1,4 @@
+import { effectiveRow } from '../../../lib/closing';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
 import {
@@ -41,6 +42,8 @@ export async function POST(req) {
     .order('slot_date', { ascending: true })
     .order('slot_hour', { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const nowEff = new Date();
+  for (let i = 0; i < (signups || []).length; i++) signups[i] = effectiveRow(signups[i], nowEff); // 1-hour expiry
 
   // Per-phone history (no-shows, late arrivals)
   const { data: allHistory } = await supabase

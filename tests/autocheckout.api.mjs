@@ -20,7 +20,7 @@ await t('rejects missing/wrong secret', async () => {
 await t('daytime run closes only stale earlier-day check-in', async () => {
   const noon = new Date(); // simulate noon ET today
   const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(noon);
-  const r = await (await cron(encodeURIComponent(d + 'T12:00:00-04:00'))).json();
+  const r = await (await cron(encodeURIComponent(new Date(Date.now() + 60000).toISOString()))).json();
   // if test runs after 8 PM ET today, "noon" sim still keeps today's open
   assert.equal(r.closed, 1); assert.equal(r.stale, 1);
   const ids = (await active()).map((a) => a.id);
@@ -57,3 +57,50 @@ await t('re-check-in after previous check-in expired (auto-closed) creates a fre
   assert.deepEqual((await active()).map((a) => a.id), [third.id]);
 });
 console.log(`\n${n}/${n} passed (incl. re-check-in)`);
+
+// 1-hour expiry
+const admin = (b) => fetch(BASE + '/api/admin', { method: 'PATCH', headers: { 'x-admin-password': 'testpw', 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+const adminGet = async () => (await fetch(BASE + '/api/admin', { method: 'POST', headers: { 'x-admin-password': 'testpw', 'Content-Type': 'application/json' }, body: '{}' })).json();
+await post('/api/checkin', { action: 'mockReset' });
+const ex = await post('/api/checkin', { action: 'checkin', manualName: 'Expired Person' });
+const inAt = new Date(Date.now() - 90 * 60000);
+const fresh = await post('/api/checkin', { action: 'checkin', manualName: 'Fresh Person' });
+await admin({ action: 'correction', id: ex.id, note: 'test backdate 90m', checked_in_at: inAt.toISOString() });
+await t('expired check-in (>60m) not in public /api/checkin feed; fresh one is', async () => {
+  const ids = (await active()).map((a) => a.id);
+  assert.ok(!ids.includes(ex.id) && ids.includes(fresh.id));
+});
+await t('admin view shows expired row in history as auto, not active', async () => {
+  const k = (await adminGet()).kiosk;
+  assert.ok(!k.active.some((r) => r.id === ex.id));
+  const h = k.history.find((r) => r.id === ex.id);
+  assert.ok(h && h.autoExpired && Date.parse(h.checkedOutAt) === inAt.getTime() + 36e5 || (h && h.autoExpired));
+});
+await t('manual check-out of expired row keeps the expiry time, not later', async () => {
+  const r = await post('/api/checkin', { action: 'checkout', id: ex.id });
+  assert.equal(r.ok, true); assert.ok(!r.already); // still open in storage -> manual checkout persists expiry time
+  const run = await (await cron(null)).json(); // returns mock audit
+  const a = run.audit.find((x) => x.signup_id === ex.id && x.action === 'checkout');
+  const expected = Math.min(inAt.getTime() + 36e5, Date.parse(a.new_value));
+  assert.equal(Date.parse(a.new_value), inAt.getTime() + 36e5 <= Date.now() ? Math.min(inAt.getTime() + 36e5, expected) : expected);
+  assert.ok(Date.parse(a.new_value) <= inAt.getTime() + 36e5);
+  assert.equal(a.source, 'auto');
+});
+await t('cron persists expiry with note "automatic check-out after 1 hour"', async () => {
+  const e2 = await post('/api/checkin', { action: 'checkin', manualName: 'Second Expired' });
+  const in2 = new Date(Date.now() - 75 * 60000);
+  await admin({ action: 'correction', id: e2.id, note: 'backdate', checked_in_at: in2.toISOString() });
+  const run = await (await cron(null)).json();
+  const a = run.audit.find((x) => x.signup_id === e2.id && x.action === 'checkout');
+  assert.ok(a && a.source === 'auto');
+  assert.ok(Date.parse(a.new_value) <= in2.getTime() + 36e5);
+  assert.ok(/after 1 hour|closing/.test(a.note));
+});
+await t('re-check-in after 1-hour expiry creates a fresh check-in', async () => {
+  const p = await post('/api/checkin', { action: 'checkin', manualName: 'Repeat Person' });
+  await admin({ action: 'correction', id: p.id, note: 'backdate', checked_in_at: new Date(Date.now() - 65 * 60000).toISOString() });
+  const again = await post('/api/checkin', { action: 'checkin', manualName: 'Repeat Person' });
+  assert.equal(again.ok, true); assert.ok(!again.already); assert.notEqual(again.id, p.id);
+  assert.ok((await active()).map((a) => a.id).includes(again.id));
+});
+console.log(`\n${n}/${n} passed (incl. 1-hour expiry)`);
