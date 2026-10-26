@@ -5,7 +5,7 @@ import { OPEN_HOURS, WEEK_LABEL, slotKey } from '../../lib/openHours';
 const T = {
   en: {
     toggle: 'Español', kicker: 'Holy Family Adoration Chapel · St. Henry',
-    title: 'Would you spend an hour with The Holy Sacrament this week?',
+    title: 'Would you spend an hour with The Blessed Sacrament this week?',
     intro: 'These hours had almost no one in the chapel last week. Tap the ones you can take.',
     covered: 'Every hour this week is covered, thank you! 🙏', coveredSub: 'Want to hear when an hour needs someone? Join the list.',
     join: 'Join the list', joined: 'You are on the list. Thank you!',
@@ -15,8 +15,8 @@ const T = {
     alerts: 'Text or email me when an hour needs someone', regular: "I'd like a regular weekly hour",
     submit: 'Sign me up', back: 'Back', saving: 'Saving…',
     thanks: (n) => `Thank you, ${n}!`, yours: 'Your hours:',
-    steps: ['Come to the chapel a few minutes early.', 'Tap “Check in” on the iPad by the door.', 'Type your first name.', 'Stay the hour with The Holy Sacrament.'],
-    cal: 'Add to my calendar', more: 'Pick more hours', calTitle: 'An hour with The Holy Sacrament – Holy Family Chapel, St. Henry',
+    steps: ['Come to the chapel a few minutes early.', 'Tap “Check in” on the iPad by the door.', 'Type your first name.', 'Stay the hour with The Blessed Sacrament.'],
+    cal: 'Add to my calendar', more: 'Pick more hours', calTitle: 'An hour with The Blessed Sacrament – Holy Family Chapel, St. Henry',
   },
   es: {
     toggle: 'English', kicker: 'Capilla de Adoración Sagrada Familia · St. Henry',
