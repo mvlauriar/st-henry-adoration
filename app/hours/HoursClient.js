@@ -48,7 +48,7 @@ function ics(keys, title) {
     const [d, hh] = k.split('T'); const h = Number(hh); const ds = d.replace(/-/g, '');
     return ['BEGIN:VEVENT', `UID:${k}-sthenry-adoration`, `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}`,
       `DTSTART;TZID=America/New_York:${ds}T${pad(h)}0000`, `DTEND;TZID=America/New_York:${ds}T${pad(h + 1)}0000`,
-      `SUMMARY:${title}`, 'LOCATION:St. Henry Catholic Church, Pompano Beach FL',
+      `SUMMARY:${title}`, 'LOCATION:Holy Family Adoration Chapel\\, St. Henry Catholic Church\\, 1500 S Andrews Ave\\, Pompano Beach\\, FL 33069',
       'DESCRIPTION:Tap Check in on the iPad by the door and type your first name.',
       'BEGIN:VALARM', 'TRIGGER:-PT60M', 'ACTION:DISPLAY', 'DESCRIPTION:Adoration in 1 hour', 'END:VALARM', 'END:VEVENT'].join('\r\n');
   });
