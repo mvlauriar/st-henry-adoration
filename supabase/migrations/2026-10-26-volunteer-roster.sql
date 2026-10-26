@@ -26,7 +26,8 @@ create table if not exists hour_signups (
   created_at timestamptz not null default now(),
   unique (volunteer_id, slot_start)
 );
-create index if not exists hour_signups_slot_idx on hour_signups (slot_start);
+-- One person per hour: the database rejects a second sign-up for the same hour (safe under simultaneous submits).
+create unique index if not exists hour_signups_one_per_hour on hour_signups (slot_start);
 create index if not exists hour_signups_campaign_idx on hour_signups (campaign);
 
 alter table volunteers   enable row level security;

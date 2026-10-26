@@ -7,7 +7,9 @@ const T = {
     toggle: 'Español', kicker: 'Holy Family Adoration Chapel · St. Henry',
     title: 'Would you spend an hour with Jesus this week?',
     intro: 'These hours had almost no one in the chapel last week. Tap the ones you can take.',
-    nobody: 'No one yet', one: '1 signed up', many: (n) => `${n} signed up`, passed: 'Passed',
+    covered: 'Every hour this week is covered, thank you! 🙏', coveredSub: 'Want to hear when an hour needs someone? Join the list.',
+    join: 'Join the list', joined: 'You are on the list. Thank you!',
+    justTaken: (h) => `Someone just took ${h}. Please pick another hour below.`, savedSome: (h) => `We saved ${h}.`,
     picked: (n) => `${n} hour${n === 1 ? '' : 's'} picked`, next: 'Continue',
     formTitle: 'Almost done', name: 'First name', contact: 'Phone or email',
     alerts: 'Text or email me when an hour needs someone', regular: "I'd like a regular weekly hour",
@@ -20,7 +22,9 @@ const T = {
     toggle: 'English', kicker: 'Capilla de Adoración Sagrada Familia · St. Henry',
     title: '¿Pasarías una hora con Jesús esta semana?',
     intro: 'Estas horas casi no tuvieron a nadie en la capilla la semana pasada. Toca las que puedas tomar.',
-    nobody: 'Nadie aún', one: '1 inscrito', many: (n) => `${n} inscritos`, passed: 'Ya pasó',
+    covered: '¡Todas las horas de esta semana están cubiertas, gracias! 🙏', coveredSub: '¿Quieres saber cuando una hora necesite a alguien? Únete a la lista.',
+    join: 'Unirme a la lista', joined: 'Ya estás en la lista. ¡Gracias!',
+    justTaken: (h) => `Alguien acaba de tomar ${h}. Elige otra hora abajo.`, savedSome: (h) => `Guardamos ${h}.`,
     picked: (n) => `${n} hora${n === 1 ? '' : 's'} elegida${n === 1 ? '' : 's'}`, next: 'Continuar',
     formTitle: 'Casi listo', name: 'Nombre', contact: 'Teléfono o correo',
     alerts: 'Avísenme por mensaje o correo cuando una hora necesite a alguien', regular: 'Me gustaría una hora fija cada semana',
@@ -53,32 +57,46 @@ function ics(keys, title) {
 
 export default function HoursClient() {
   const [lang, setLang] = useState('en');
-  const [counts, setCounts] = useState({});
+  const [open, setOpen] = useState(null);
+  const [notice, setNotice] = useState('');
   const [sel, setSel] = useState([]);
   const [step, setStep] = useState('pick');
-  const [f, setF] = useState({ first_name: '', contact: '', wants_alerts: true, wants_regular: false, website: '' });
+  const [f, setF] = useState({ first_name: '', contact: '', wants_alerts: false, wants_regular: false, website: '' });
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const [done, setDone] = useState([]);
   const t = T[lang];
-  const now = useMemo(etNow, [step]);
+  const now = useMemo(etNow, [step, open]);
+  const openCount = (open || []).filter((k) => { const [d, h] = k.split('T'); return !hasPassed(d, Number(h), now); }).length;
 
   useEffect(() => {
     if (navigator.language?.startsWith('es')) setLang('es');
     try { const s = JSON.parse(localStorage.getItem('sh-volunteer') || 'null'); if (s) setF((x) => ({ ...x, first_name: s.first_name || '', contact: s.contact || '' })); } catch {}
     refresh();
+    const onFocus = () => refresh();
+    const onVis = () => { if (document.visibilityState === 'visible') refresh(); };
+    window.addEventListener('focus', onFocus); document.addEventListener('visibilitychange', onVis);
+    return () => { window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVis); };
   }, []);
-  function refresh() { fetch('/api/hours').then((r) => r.json()).then((d) => setCounts(d.counts || {})).catch(() => {}); }
+  function refresh() { fetch('/api/hours').then((r) => r.json()).then((d) => { const o = d.open || []; setOpen(o); setSel((x) => x.filter((k) => o.includes(k))); }).catch(() => {}); }
+  const label = (k) => `${dayLabel(k.split('T')[0], lang).split(',')[0]} ${range(Number(k.split('T')[1]))}`;
   const toggle = (k) => setSel((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
 
-  async function submit(e) {
-    e.preventDefault(); setErr(''); setBusy(true);
+  async function submit(e, alertsOnly = false) {
+    e.preventDefault(); setNotice(''); setErr(''); setBusy(true);
     try {
       const src = new URLSearchParams(window.location.search).get('src') || 'hours-link';
-      const r = await fetch('/api/hours', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, language: lang, slots: sel, source: src }) });
+      const r = await fetch('/api/hours', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, ...(alertsOnly ? { wants_alerts: true, alerts_only: true } : {}), language: lang, slots: alertsOnly ? [] : sel, source: src }) });
       const d = await r.json();
       if (!r.ok) { setErr(d.error || 'Error'); setBusy(false); return; }
       localStorage.setItem('sh-volunteer', JSON.stringify({ first_name: f.first_name, contact: f.contact }));
-      setDone(sel); setSel([]); setStep('done'); refresh();
+      if (alertsOnly) { setStep('joined'); setBusy(false); return; }
+      const saved = d.saved || [], taken = d.taken || [];
+      setSel([]); refresh();
+      if (taken.length) {
+        setNotice(t.justTaken(taken.map(label).join(', ')) + (saved.length ? ' ' + t.savedSome(saved.map(label).join(', ')) : ''));
+        if (saved.length) setDone((x) => [...x, ...saved]);
+        setStep('pick');
+      } else { setDone(saved); setStep('done'); }
     } catch { setErr('Network error'); }
     setBusy(false);
   }
@@ -94,13 +112,22 @@ export default function HoursClient() {
       {step === 'pick' && (<>
         <h1>{t.title}</h1>
         <p className="hrs-intro">{t.intro} <b>{WEEK_LABEL[lang]}</b></p>
-        {Object.entries(OPEN_HOURS).map(([d, hours]) => {
-          const live = hours.filter((h) => !hasPassed(d, h, now));
+        {notice && <div className="hrs-err" role="status">{notice}</div>}
+        {open && !openCount && (<form className="hrs-form" onSubmit={(e) => submit(e, true)}>
+          <h2 style={{ fontSize: 20, marginTop: 20 }}>{t.covered}</h2><p className="hrs-intro">{t.coveredSub}</p>
+          <label>{t.name}<input required autoComplete="given-name" value={f.first_name} onChange={(e) => setF({ ...f, first_name: e.target.value })} /></label>
+          <label>{t.contact}<input required autoComplete="tel" inputMode="email" value={f.contact} onChange={(e) => setF({ ...f, contact: e.target.value })} /></label>
+          <input className="hrs-hp" tabIndex={-1} autoComplete="off" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} aria-hidden="true" />
+          {err && <div className="hrs-err">{err}</div>}
+          <button className="hrs-primary" disabled={busy}>{busy ? t.saving : t.join}</button>
+        </form>)}
+        {open && Object.entries(OPEN_HOURS).map(([d, hours]) => {
+          const live = hours.filter((h) => !hasPassed(d, h, now) && open.includes(slotKey(d, h)));
           if (!live.length) return null;
           return (<section key={d} className="hrs-day"><h2>{dayLabel(d, lang)}</h2><div className="hrs-chips">
-            {live.map((h) => { const k = slotKey(d, h); const n = counts[k] || 0; const on = sel.includes(k);
-              return (<button key={k} className={`hrs-chip${on ? ' on' : ''}${n ? ' taken' : ''}`} onClick={() => toggle(k)} aria-pressed={on}>
-                <span className="hrs-time">{range(h)}</span><span className="hrs-n">{on ? '✓' : n === 0 ? t.nobody : n === 1 ? t.one : t.many(n)}</span></button>); })}
+            {live.map((h) => { const k = slotKey(d, h); const on = sel.includes(k);
+              return (<button key={k} className={`hrs-chip${on ? ' on' : ''}`} onClick={() => toggle(k)} aria-pressed={on}>
+                <span className="hrs-time">{range(h)}</span><span className="hrs-n">{on ? '✓' : ''}</span></button>); })}
           </div></section>);
         })}
         <div className={`hrs-bar${sel.length ? ' show' : ''}`}><span>{t.picked(sel.length)}</span><button onClick={() => setStep('form')} disabled={!sel.length}>{t.next} →</button></div>
@@ -117,9 +144,10 @@ export default function HoursClient() {
         <button className="hrs-primary" disabled={busy}>{busy ? t.saving : t.submit}</button>
         <button type="button" className="hrs-link" onClick={() => setStep('pick')}>← {t.back}</button>
       </form>)}
+      {step === 'joined' && (<div className="hrs-done"><div className="hrs-big">🕯️</div><h1>{t.joined}</h1></div>)}
       {step === 'done' && (<div className="hrs-done">
         <div className="hrs-big">🕯️</div><h1>{t.thanks(f.first_name)}</h1>
-        <p className="hrs-intro">{t.yours} <b>{done.map((k) => `${dayLabel(k.split('T')[0], lang).split(',')[0]} ${range(Number(k.split('T')[1]))}`).join(' · ')}</b></p>
+        <p className="hrs-intro">{t.yours} <b>{done.map(label).join(' · ')}</b></p>
         <ol>{t.steps.map((s) => <li key={s}>{s}</li>)}</ol>
         <button className="hrs-primary" onClick={download}>📅 {t.cal}</button>
         <button className="hrs-link" onClick={() => setStep('pick')}>{t.more}</button>

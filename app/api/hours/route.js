@@ -17,19 +17,19 @@ function limited(ip) {
 // GET — public: slot list + counts only (no names/contacts).
 export async function GET() {
   const slots = allSlots();
-  const counts = {};
+  const taken = new Set();
   try {
     const first = parishInstant(slots[0].date, 0).toISOString();
     const { data, error } = await supabaseAdmin().from('hour_signups').select('slot_start').eq('campaign', CAMPAIGN).gte('slot_start', first);
     if (error) throw error;
     for (const r of data || []) {
       const p = parishParts(new Date(r.slot_start));
-      const k = slotKey(p.date, p.hour); counts[k] = (counts[k] || 0) + 1;
+      taken.add(slotKey(p.date, p.hour));
     }
   } catch (e) {
-    return NextResponse.json({ slots, counts: {}, warning: 'counts unavailable' });
+    return NextResponse.json({ open: slots.map((s) => s.key), warning: 'availability unavailable' });
   }
-  return NextResponse.json({ slots, counts });
+  return NextResponse.json({ open: slots.filter((s) => !taken.has(s.key)).map((s) => s.key) });
 }
 
 export async function POST(req) {
@@ -58,9 +58,10 @@ export async function POST(req) {
     if (!isOpenSlot(date, hour)) continue;
     const end = parishInstant(date, hour + 1);
     if (end <= now) continue;
-    rows.push({ campaign: CAMPAIGN, slot_start: parishInstant(date, hour).toISOString(), slot_end: end.toISOString() });
+    rows.push({ key: k, campaign: CAMPAIGN, slot_start: parishInstant(date, hour).toISOString(), slot_end: end.toISOString() });
   }
-  if (!rows.length) return bad('Please pick at least one hour that has not passed.');
+  const alertsOnly = !!b.alerts_only;
+  if (!rows.length && !alertsOnly) return bad('Please pick at least one hour that has not passed.');
 
   const sb = supabaseAdmin();
   const { data: existing } = await sb.from('volunteers').select('id, wants_alerts, wants_regular').eq('contact_type', contact_type).eq('contact', contact).maybeSingle();
@@ -79,9 +80,15 @@ export async function POST(req) {
     if (error) return fail();
     volunteerId = data.id;
   }
-  const { error } = await sb.from('hour_signups').upsert(rows.map((r) => ({ ...r, volunteer_id: volunteerId })), { onConflict: 'volunteer_id,slot_start', ignoreDuplicates: true });
-  if (error) return fail();
-  return NextResponse.json({ ok: true, count: rows.length });
+  // Insert one at a time; the unique index on slot_start makes the database the referee.
+  const saved = [], taken = [];
+  for (const { key, ...r } of rows) {
+    const { error } = await sb.from('hour_signups').insert({ ...r, volunteer_id: volunteerId });
+    if (!error) saved.push(key);
+    else if (error.code === '23505') taken.push(key);
+    else return fail();
+  }
+  return NextResponse.json({ ok: true, saved, taken });
 }
 
 function bad(error, status = 400) { return NextResponse.json({ error }, { status }); }
