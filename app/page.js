@@ -45,8 +45,8 @@ export default async function HomePage({ searchParams }) {
         <div className="parish">Guardians of the Sacred Chapel</div>
 
         <div className="hero-call">
-          <p className="hero-en">Spend an hour with Jesus.<br/>He is waiting for you.</p>
-          <p className="hero-es">Pasa una hora con Jesús.<br/>Él te espera.</p>
+          <p className="hero-en">Spend an hour with The Blessed Sacrament.</p>
+          <p className="hero-es">Pasa una hora con El Santísimo.</p>
         </div>
 
         <hr />

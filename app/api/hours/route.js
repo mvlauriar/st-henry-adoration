@@ -14,9 +14,13 @@ function limited(ip) {
   return arr.length > 5;
 }
 
-// GET — public: slot list + counts only (no names/contacts).
-export async function GET() {
+// Local-only design mock (never on Vercel): HOURS_MOCK=1 npm run dev; ?mock=none shows the all-taken state.
+const MOCK = process.env.HOURS_MOCK === '1' && !process.env.VERCEL;
+
+// GET — public: open slot keys only (no names/contacts).
+export async function GET(req) {
   const slots = allSlots();
+  if (MOCK) return NextResponse.json({ open: new URL(req.url).searchParams.get('mock') === 'none' ? [] : slots.map((s) => s.key) });
   const taken = new Set();
   try {
     const first = parishInstant(slots[0].date, 0).toISOString();
@@ -63,6 +67,7 @@ export async function POST(req) {
   const alertsOnly = !!b.alerts_only;
   if (!rows.length && !alertsOnly) return bad('Please pick at least one hour that has not passed.');
 
+  if (MOCK) return NextResponse.json({ ok: true, saved: rows.map((r) => r.key), taken: [] });
   const sb = supabaseAdmin();
   const { data: existing } = await sb.from('volunteers').select('id, wants_alerts, wants_regular').eq('contact_type', contact_type).eq('contact', contact).maybeSingle();
   let volunteerId = existing?.id;
