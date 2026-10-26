@@ -85,6 +85,8 @@ export default function AdminPage() {
         <div className="parish">{data.empty.length} empty hour{data.empty.length === 1 ? '' : 's'} this week</div>
       </header>
 
+      <VolunteersAdmin />
+
       {data.kiosk && <KioskAdmin k={data.kiosk} reload={() => load(sessionStorage.getItem('adminPw'))} />}
 
       {!checkinEnabled && (
@@ -499,6 +501,44 @@ function AttendanceRow({ a, reload, long, longHours }) {
           <button className="btn btn-primary" style={{ maxWidth: 160 }}>Save correction</button>
         </form>
       )}
+    </div>
+  );
+}
+
+function VolunteersAdmin() {
+  const [d, setD] = useState(null); const [err, setErr] = useState('');
+  useEffect(() => {
+    fetch('/api/admin/volunteers', { method: 'POST', headers: { 'x-admin-password': sessionStorage.getItem('adminPw') || '' } })
+      .then(async (r) => { const j = await r.json(); if (!r.ok) setErr(j.error || 'Error'); else setD(j); }).catch(() => setErr('Network error'));
+  }, []);
+  const fmt = (iso) => new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric' });
+  function csv(rows, name) {
+    const keys = Object.keys(rows[0] || {});
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const text = [keys.join(','), ...rows.map((r) => keys.map((k) => esc(r[k])).join(','))].join('\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click();
+  }
+  if (err) return <div style={{ margin: '16px 0', color: 'var(--ink-secondary)' }}><h2 className="admin-h2">Open-hour sign-ups</h2>{err}</div>;
+  if (!d) return null;
+  const byId = Object.fromEntries(d.volunteers.map((v) => [v.id, v]));
+  const bySlot = {};
+  for (const s of d.signups) (bySlot[s.slot_start] ||= []).push(byId[s.volunteer_id]);
+  const flat = d.signups.map((s) => { const v = byId[s.volunteer_id] || {}; return { slot: fmt(s.slot_start), name: v.first_name, contact: v.contact, language: v.language, wants_alerts: v.wants_alerts, wants_regular: v.wants_regular, campaign: s.campaign }; });
+  return (
+    <div style={{ margin: '16px 0 28px' }}>
+      <h2 className="admin-h2">Open-hour sign-ups ({d.signups.length})</h2>
+      {Object.entries(bySlot).map(([slot, vs]) => (
+        <div key={slot} style={{ padding: '6px 0', borderBottom: '1px solid #eee' }}><b>{fmt(slot)}</b>: {vs.map((v) => v ? `${v.first_name} (${v.contact})` : '?').join(', ')}</div>
+      ))}
+      {!d.signups.length && <div>No sign-ups yet.</div>}
+      <h2 className="admin-h2" style={{ marginTop: 20 }}>Volunteer roster ({d.volunteers.length}, {d.volunteers.filter((v) => v.wants_alerts).length} opted in to alerts)</h2>
+      {d.volunteers.map((v) => (
+        <div key={v.id} style={{ padding: '4px 0' }}>{v.first_name} · {v.contact} · {v.language.toUpperCase()}{v.wants_alerts ? ' · alerts ✓' : ''}{v.wants_regular ? ' · wants regular hour' : ''}</div>
+      ))}
+      <div className="btn-row" style={{ gap: 8 }}>
+        <button className="btn" onClick={() => csv(flat, 'signups.csv')} disabled={!flat.length}>Sign-ups CSV</button>
+        <button className="btn" onClick={() => csv(d.volunteers, 'volunteers.csv')} disabled={!d.volunteers.length}>Roster CSV</button>
+      </div>
     </div>
   );
 }
