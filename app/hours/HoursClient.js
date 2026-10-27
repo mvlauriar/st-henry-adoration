@@ -21,6 +21,8 @@ const T = {
     thanks: (n) => `Thank you, ${n}!`, thanksSub: 'Your hours are saved.',
     expect: 'What to expect', steps: ['Come to the chapel a few minutes early.', 'Tap “Check in” on the iPad by the door.', 'Type your first name.', 'Stay the hour with The Blessed Sacrament.'],
     cal: 'Add to my calendar', more: 'Pick more hours', calTitle: 'An hour with The Blessed Sacrament – Holy Family Chapel, St. Henry',
+    remindKicker: 'Important', remindTitle: 'When you arrive, check in on the iPad at the chapel entrance.', remindSub: 'That’s how we know the chapel is covered.',
+    calDesc: 'Check in on the iPad at the chapel entrance when you arrive. That is how we know the chapel is covered.',
   },
   es: {
     toggle: 'EN', toggleLabel: 'View in English', kicker: 'Capilla de Adoración Sagrada Familia', parish: 'St. Henry · Pompano Beach',
@@ -39,6 +41,8 @@ const T = {
     thanks: (n) => `¡Gracias, ${n}!`, thanksSub: 'Tus horas están guardadas.',
     expect: 'Qué esperar', steps: ['Llega a la capilla unos minutos antes.', 'Toca “Check in” en el iPad junto a la puerta.', 'Escribe tu nombre.', 'Quédate la hora con El Santísimo.'],
     cal: 'Agregar a mi calendario', more: 'Elegir más horas', calTitle: 'Una hora con El Santísimo – Capilla Sagrada Familia, St. Henry',
+    remindKicker: 'Importante', remindTitle: 'Cuando llegues, regístrate en el iPad a la entrada de la capilla.', remindSub: 'Así sabemos que la capilla está cubierta.',
+    calDesc: 'Cuando llegues, regístrate en el iPad a la entrada de la capilla. Así sabemos que la capilla está cubierta.',
   },
 };
 
@@ -53,14 +57,15 @@ const dayNum = (d) => Number(d.slice(8));
 function etNow() { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((x) => [x.type, x.value])); return { date: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) }; }
 const hasPassed = (d, h, n) => d < n.date || (d === n.date && h + 1 <= n.hour);
 
-function ics(keys, title) {
+function ics(keys, title, desc) {
+  const esc = (x) => x.replace(/\\/g, '\\\\').replace(/[,;]/g, (m) => '\\' + m);
   const pad = (n) => String(n).padStart(2, '0');
   const ev = keys.map((k) => {
     const [d, hh] = k.split('T'); const h = Number(hh); const ds = d.replace(/-/g, '');
     return ['BEGIN:VEVENT', `UID:${k}-sthenry-adoration`, `DTSTAMP:${new Date().toISOString().replace(/[-:]|\.\d+/g, '')}`,
       `DTSTART;TZID=America/New_York:${ds}T${pad(h)}0000`, `DTEND;TZID=America/New_York:${ds}T${pad(h + 1)}0000`,
       `SUMMARY:${title}`, 'LOCATION:Holy Family Adoration Chapel\\, St. Henry Catholic Church\\, 1500 S Andrews Ave\\, Pompano Beach\\, FL 33069',
-      'DESCRIPTION:Tap Check in on the iPad by the door and type your first name.',
+      `DESCRIPTION:${esc(desc)}`,
       'BEGIN:VALARM', 'TRIGGER:-PT60M', 'ACTION:DISPLAY', 'DESCRIPTION:Adoration in 1 hour', 'END:VALARM', 'END:VEVENT'].join('\r\n');
   });
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//St Henry Adoration//EN', ...ev, 'END:VCALENDAR'].join('\r\n');
@@ -124,7 +129,7 @@ export default function HoursClient() {
     setBusy(false);
   }
   function download() {
-    const blob = new Blob([ics(done, t.calTitle)], { type: 'text/calendar' });
+    const blob = new Blob([ics(done, t.calTitle, t.calDesc)], { type: 'text/calendar' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'adoration-hours.ics'; a.click();
   }
   const jump = (d) => { setActiveDay(d); document.getElementById(`day-${d}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
@@ -204,6 +209,10 @@ export default function HoursClient() {
           <h1 className={s.h1sm}>{t.thanks(f.first_name)}</h1><p className={s.muted}>{t.thanksSub}</p>
           <div className={s.ticket}>{done.map((k) => { const [d, hh] = k.split('T'); return (
             <div key={k} className={s.ticketRow}><span className={s.tday}>{dt(d).toLocaleDateString(loc(lang), { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span><span className={s.ttime}>{range(Number(hh))}</span></div>); })}</div>
+          <div className={s.remind} role="note">
+            <svg className={s.remindIcon} viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5" /><path d="M9 12.5l2 2 4-4.5" /><circle cx="12" cy="18.5" r=".6" /></svg>
+            <div><p className={s.remindKicker}>{t.remindKicker}</p><p className={s.remindTitle}>{t.remindTitle}</p><p className={s.remindSub}>{t.remindSub}</p></div>
+          </div>
           <button className={s.primary} onClick={download}>📅 {t.cal}</button>
           <div className={s.expect}><h2>{t.expect}</h2><ol>{t.steps.map((x) => <li key={x}>{x}</li>)}</ol></div>
           <button className={s.ghost} onClick={() => go('pick')}>{t.more}</button>

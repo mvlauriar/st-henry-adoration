@@ -85,3 +85,11 @@
 @keyframes shimmer { to { background-position:-200% 0; } }
 @media (min-width:720px) { .hero { padding-top:44px; } .days { margin:20px 0 4px; border-radius:16px; border:1px solid var(--line); } }
 @media (prefers-reduced-motion: reduce) { .wrap *, .wrap *::before, .wrap *::after { animation:none !important; transition:none !important; } .tick circle, .tick path { stroke-dashoffset:0; } }
+
+.remind { display:flex; gap:14px; align-items:flex-start; text-align:left; margin:18px 0; padding:18px; border-radius:18px; background:var(--navy); color:#fff; border:2px solid var(--gold); box-shadow:0 10px 28px rgba(31,43,77,.22); animation:remindIn .5s ease-out both .15s; }
+.remindIcon { flex:none; width:48px; height:48px; padding:10px; border-radius:14px; background:#f2c86b; fill:none; stroke:var(--navy); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.remindKicker { margin:0 0 4px; font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#f2c86b; }
+.remindTitle { margin:0 0 6px; font-size:19px; line-height:1.3; font-weight:700; }
+.remindSub { margin:0; font-size:15px; line-height:1.4; color:#dfe4f0; }
+@keyframes remindIn { from { opacity:0; transform:translateY(8px) scale(.98); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .remind { animation:none; } }
